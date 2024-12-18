@@ -82,7 +82,7 @@ class Fallback(Node):
 
 
 # Synchronous action node
-class SyncAction(Node):
+class SyncActionNode(Node):
     def __init__(self, name, action):
         super().__init__(name)
         self.action = action
@@ -94,7 +94,7 @@ class SyncAction(Node):
 
 
 # Local Sensing node
-class LocalSensingNode(SyncAction):
+class LocalSensingNode(SyncActionNode):
     def __init__(self, name, agent):
         super().__init__(name, self._local_sensing)
 
@@ -108,7 +108,7 @@ class LocalSensingNode(SyncAction):
 
 
 # Decision-making node
-class DecisionMakingNode(SyncAction):
+class DecisionMakingNode(SyncActionNode):
     def __init__(self, name, agent):
         super().__init__(name, self._decide)
         self.decision_maker = decision_making_class(agent)
@@ -124,7 +124,7 @@ class DecisionMakingNode(SyncAction):
 
 
 # Task executing node
-class TaskExecutingNode(SyncAction):
+class TaskExecutingNode(SyncActionNode):
     def __init__(self, name, agent):
         super().__init__(name, self._execute_task)
 
@@ -157,7 +157,7 @@ class TaskExecutingNode(SyncAction):
 
 
 # Exploration node
-class ExplorationNode(SyncAction):
+class ExplorationNode(SyncActionNode):
     def __init__(self, name, agent):
         super().__init__(name, self._random_explore)
         self.random_move_time = float("inf")
