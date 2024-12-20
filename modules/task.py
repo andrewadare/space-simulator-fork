@@ -1,8 +1,10 @@
-import pygame  # TODO: remove this dependency
+import pygame
 
 
 class Task:
-    def __init__(self, task_id: int, position, radius: float, amount: float):
+    def __init__(
+        self, task_id: int, position: tuple[int, int], radius: float, amount: float
+    ):
         self.task_id = task_id
         self.position = pygame.Vector2(position)
         self.radius = radius
