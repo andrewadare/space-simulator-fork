@@ -4,7 +4,6 @@ import random
 import yaml
 import importlib
 
-# from modules.utils import config
 from plugins.my_decision_making_plugin import *
 from modules.configuration_models import SpaceConfig
 

@@ -19,7 +19,7 @@ class Agent:
         self.max_accel = conf.max_accel
         self.max_angular_speed = conf.max_angular_speed
         self.work_rate = conf.work_rate
-        self.memory_location = []  # To draw track
+        self.memory_location = []  # TODO: rename to tail; use deque
         self.rotation = 0  # Initial rotation
         self.color = (0, 0, 255)  # Blue color
         self.blackboard = {}
