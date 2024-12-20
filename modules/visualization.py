@@ -38,15 +38,11 @@ def set_task_colors(task_config: TaskConfig) -> None:
 
 def draw_task(task: Task, screen, vis_factor: float):
 
-    # TODO: stop mutating task in a drawing function
-    # task.color = TASK_COLORS.get(task.task_id, (0, 0, 0))
-    # task.radius = task.amount / vis_factor
     color = TASK_COLORS.get(task.task_id, (0, 0, 0))
     radius = task.amount / vis_factor
 
     if not task.completed:
         pygame.draw.circle(screen, color, task.position, int(radius))
-        # pygame.draw.circle(screen, task.color, task.position, int(task.radius))
 
 
 def draw_task_id(task, screen):
@@ -172,3 +168,9 @@ def draw_path_to_assigned_tasks(agent, screen):
         )
         # Update the start position for the next segment
         start_pos = task_position
+
+
+# Pre-render static elements
+def pre_render_text(text, font_size, color):
+    font = pygame.font.Font(None, font_size)
+    return font.render(text, True, color)
