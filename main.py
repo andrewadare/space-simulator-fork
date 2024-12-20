@@ -5,19 +5,15 @@ import cProfile
 import importlib
 import yaml
 
-from modules.utils import pre_render_text
+import modules.visualization as vis
 from modules.configuration_models import (
     SpaceConfig,
     SimConfig,
-    TaskConfig,
     DynamicTaskGenerationConfig,
     RenderingMode,
     RenderingOptions,
 )
 from modules.simulation import generate_tasks, generate_agents
-
-
-import modules.visualization as vis
 
 
 parser = argparse.ArgumentParser(
@@ -44,7 +40,7 @@ async def game_loop(config: SpaceConfig):
     sampling_time = 1.0 / sim_config.sampling_freq
 
     # Initialize agents with behavior trees, giving them the information of current tasks
-    tasks = generate_tasks(config)
+    tasks = generate_tasks(config, config.tasks.quantity, 0)
     agents = generate_agents(tasks, config.agents)
 
     # Initialize pygame
@@ -64,7 +60,7 @@ async def game_loop(config: SpaceConfig):
     font = pygame.font.Font(None, 15)
 
     # Pre-rendered text for performance improvement
-    mission_completed_text = pre_render_text("MISSION COMPLETED", 72, (0, 0, 0))
+    mission_completed_text = vis.pre_render_text("MISSION COMPLETED", 72, (0, 0, 0))
 
     running = True
     clock = pygame.time.Clock()
@@ -117,10 +113,7 @@ async def game_loop(config: SpaceConfig):
 
                     new_task_id_start = len(tasks)
                     new_tasks = generate_tasks(
-                        config,
-                        task_quantity=task_gen.tasks_per_generation,
-                        task_id_start=new_task_id_start,
-                        # colors=vis.TASK_COLORS,
+                        config, task_gen.tasks_per_generation, new_task_id_start
                     )
                     tasks.extend(new_tasks)
                     last_generation_time = simulation_time
@@ -164,7 +157,7 @@ async def game_loop(config: SpaceConfig):
                         vis.draw_task_id(task, screen)
 
                 # Display task quantity and elapsed simulation time
-                task_time_text = pre_render_text(
+                task_time_text = vis.pre_render_text(
                     f"Tasks left: {tasks_left}; Time: {simulation_time:.2f}s",
                     36,
                     (0, 0, 0),

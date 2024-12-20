@@ -24,15 +24,12 @@ def generate_positions(quantity, x_min, x_max, y_min, y_max, radius=10):
     return positions
 
 
-# TODO fix up task_quantity fallback logic
 def generate_tasks(
-    config: SpaceConfig, task_quantity: int | None = None, task_id_start: int = 0
+    config: SpaceConfig, num_tasks: int, task_id_start: int
 ) -> list[Task]:
-    if task_quantity is None:
-        task_quantity = config.tasks.quantity
 
     tasks_positions = generate_positions(
-        config.tasks.quantity,
+        num_tasks,
         config.tasks.locations.x_min,
         config.tasks.locations.x_max,
         config.tasks.locations.y_min,
