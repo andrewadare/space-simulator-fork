@@ -6,7 +6,7 @@ import importlib
 import yaml
 
 from modules.utils import pre_render_text
-from modules.config import (
+from modules.configuration_models import (
     SpaceConfig,
     SimConfig,
     DynamicTaskGenerationConfig,

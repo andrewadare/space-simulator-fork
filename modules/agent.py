@@ -4,7 +4,8 @@ import math
 import modules.behavior_tree as bt
 from modules.utils import generate_positions, parse_behavior_tree
 from modules.task import task_colors
-from modules.config import AgentConfig
+from modules.configuration_models import AgentConfig
+from modules.task import Task
 
 agent_track_size = 400
 
@@ -23,12 +24,12 @@ class Agent:
         self.rotation = 0  # Initial rotation
         self.color = (0, 0, 255)  # Blue color
         self.blackboard = {}
-        self.tasks_info = tasks_info  # global info
-        self.agents_info = None  # global info
+        self.tasks_info = tasks_info
+        self.all_agents: list[Agent] = []  # TODO. see README
+        self.agents_nearby: list[Agent] = []
         self.communication_radius = conf.communication_radius
         self.situation_awareness_radius = conf.situation_awareness_radius
         self.target_approach_radius = conf.target_approaching_radius
-        self.agents_nearby = []
         self.message_to_share = {}
         self.messages_received = []
         self.assigned_task_id = None  # Local decision-making result.
@@ -261,9 +262,8 @@ class Agent:
 
     def update_color(self):
         if task_colors:
-            self.color = task_colors.get(
-                self.assigned_task_id, (20, 20, 20)
-            )  # Default to Dark Grey if no task is assigned
+            # Default to Dark Grey if no task is assigned
+            self.color = task_colors.get(self.assigned_task_id, (20, 20, 20))
 
     def set_assigned_task_id(self, task_id):
         self.assigned_task_id = task_id
@@ -271,22 +271,19 @@ class Agent:
     def set_planned_tasks(self, task_list):  # This is for visualisation
         self.planned_tasks = task_list
 
-    def set_global_info_agents(self, agents_info):
-        self.agents_info = agents_info
-
     def get_agents_nearby(self, radius=None):
         _communication_radius = self.communication_radius if radius is None else radius
         if _communication_radius > 0:
             communication_radius_squared = _communication_radius**2
             local_agents_info = [
                 other_agent
-                for other_agent in self.agents_info
+                for other_agent in self.all_agents
                 if (self.position - other_agent.position).length_squared()
                 <= communication_radius_squared
                 and other_agent.agent_id != self.agent_id
             ]
         else:
-            local_agents_info = self.agents_info
+            local_agents_info = self.all_agents
         return local_agents_info
 
     def get_tasks_nearby(self, radius=None, with_completed_task=True):
@@ -324,7 +321,7 @@ class Agent:
         self.task_amount_done += amount
 
 
-def generate_agents(tasks_info, agent_config: AgentConfig):
+def generate_agents(tasks: list[Task], agent_config: AgentConfig):
 
     agents_positions = generate_positions(
         agent_config.quantity,
@@ -335,15 +332,12 @@ def generate_agents(tasks_info, agent_config: AgentConfig):
         radius=agent_config.locations.non_overlap_radius,
     )
 
-    # Initialize agents
     agents = [
-        Agent(idx, pos, tasks_info, agent_config)
-        for idx, pos in enumerate(agents_positions)
+        Agent(idx, pos, tasks, agent_config) for idx, pos in enumerate(agents_positions)
     ]
 
-    # Provide the global info and create behavior tree
     for agent in agents:
-        agent.set_global_info_agents(agents)
-        agent.create_behavior_tree()
+        agent.all_agents = agents  # TODO see README
+        agent.create_behavior_tree()  # TODO why not call this in constructor?
 
     return agents

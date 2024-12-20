@@ -1,7 +1,7 @@
 import pygame
 import random
 from modules.utils import generate_positions, generate_task_colors
-from modules.config import SpaceConfig
+from modules.configuration_models import SpaceConfig
 
 
 # Temporary gloabl until drawing code is refactored.
@@ -54,7 +54,9 @@ class Task:
             screen.blit(text_surface, (self.position[0], self.position[1]))
 
 
-def generate_tasks(config: SpaceConfig, task_quantity=None, task_id_start=0):
+def generate_tasks(
+    config: SpaceConfig, task_quantity: int | None = None, task_id_start: int = 0
+) -> list[Task]:
     if task_quantity is None:
         task_quantity = config.tasks.quantity
 

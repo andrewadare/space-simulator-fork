@@ -6,10 +6,8 @@ import importlib
 
 # from modules.utils import config
 from plugins.my_decision_making_plugin import *
-from modules.config import SpaceConfig
+from modules.configuration_models import SpaceConfig
 
-
-# print("config:", config)
 
 with open("config.yaml", "r") as f:
     config_dict = yaml.safe_load(f)
