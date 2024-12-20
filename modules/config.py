@@ -1,10 +1,12 @@
 from pydantic import (
     BaseModel,
+    Field,
     PositiveInt,
     NonNegativeInt,
     PositiveFloat,
     NonNegativeFloat,
 )
+from typing import Any
 from pathlib import Path
 from enum import Enum
 
@@ -30,31 +32,31 @@ class OperatingArea(BaseModel):
     non_overlap_radius: NonNegativeFloat
 
 
-class DynamicTaskGeneration(BaseModel):
-    enabled: bool
-    interval_seconds: PositiveInt
-    max_generations: PositiveInt
-    tasks_per_generation: PositiveInt
+class DynamicTaskGenerationConfig(BaseModel):
+    enabled: bool = Field(default=False)
+    interval_seconds: PositiveInt = Field(default=10)
+    max_generations: PositiveInt = Field(default=5)
+    tasks_per_generation: PositiveInt = Field(default=5)
 
 
 class RenderingOptions(BaseModel):
-    agent_tail: bool
-    agent_communication_topology: bool
-    agent_situation_awareness_circle: bool
-    agent_id: bool
-    agent_work_done: bool
-    agent_assigned_task_id: bool
-    agent_path_to_assigned_tasks: bool
-    task_id: bool
+    agent_tail: bool = Field(default=False)
+    agent_communication_topology: bool = Field(default=False)
+    agent_situation_awareness_circle: bool = Field(default=False)
+    agent_id: bool = Field(default=False)
+    agent_work_done: bool = Field(default=False)
+    agent_assigned_task_id: bool = Field(default=False)
+    agent_path_to_assigned_tasks: bool = Field(default=False)
+    task_id: bool = Field(default=False)
 
 
 class SavingOptions(BaseModel):
     output_folder: Path
     with_date_subfolder: bool
-    save_gif: bool  # Only works if `rendering_mode` is `Screen`
-    save_timewise_result_csv: bool
-    save_agentwise_result_csv: bool
-    save_config_yaml: bool
+    save_gif: bool = Field(default=False)  # Only works if `rendering_mode` is `Screen`
+    save_timewise_result_csv: bool = Field(default=False)
+    save_agentwise_result_csv: bool = Field(default=False)
+    save_config_yaml: bool = Field(default=False)
 
 
 class AgentConfig(BaseModel):
@@ -77,7 +79,7 @@ class TaskConfig(BaseModel):
     locations: OperatingArea
     threshold_done_by_arrival: PositiveFloat
     amounts: FloatRange
-    dynamic_task_generation: DynamicTaskGeneration
+    dynamic_task_generation: DynamicTaskGenerationConfig
 
 
 class SimConfig(BaseModel):
@@ -107,7 +109,7 @@ class SpaceConfig(BaseModel):
     agents: AgentConfig
     tasks: TaskConfig
     simulation: SimConfig
-    decision_making: dict
+    decision_making: Any  # Custom config
 
 
 if __name__ == "__main__":

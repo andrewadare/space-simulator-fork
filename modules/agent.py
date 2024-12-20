@@ -2,16 +2,11 @@ import pygame
 import math
 
 import modules.behavior_tree as bt
-from modules.utils import config, generate_positions, parse_behavior_tree
+from modules.utils import generate_positions, parse_behavior_tree
 from modules.task import task_colors
 from modules.config import AgentConfig
 
-agent_track_size = config["simulation"]["agent_track_size"]
-font = pygame.font.Font(None, 15)
-
-# Load behavior tree
-behavior_tree_xml = config["agents"]["behavior_tree_xml"]
-xml_root = parse_behavior_tree(f"bt_xml/{behavior_tree_xml}")
+agent_track_size = 400
 
 
 class Agent:
@@ -28,7 +23,6 @@ class Agent:
         self.rotation = 0  # Initial rotation
         self.color = (0, 0, 255)  # Blue color
         self.blackboard = {}
-
         self.tasks_info = tasks_info  # global info
         self.agents_info = None  # global info
         self.communication_radius = conf.communication_radius
@@ -37,18 +31,17 @@ class Agent:
         self.agents_nearby = []
         self.message_to_share = {}
         self.messages_received = []
-
         self.assigned_task_id = None  # Local decision-making result.
         self.planned_tasks = []  # Local decision-making result.
-
         self.distance_moved = 0.0
         self.task_amount_done = 0.0
+        self.tree = None
 
     def create_behavior_tree(self):
         self.tree = self._create_behavior_tree()
 
-    # Agent's Behavior Tree
     def _create_behavior_tree(self) -> bt.Node:
+        xml_root = parse_behavior_tree(f"bt_xml/default_bt.xml")
         behavior_tree = self._parse_xml_to_bt(xml_root.find("BehaviorTree"))
         return behavior_tree
 
@@ -193,12 +186,12 @@ class Agent:
                     (int(neighbor_position.x), int(neighbor_position.y)),
                 )
 
-    def draw_agent_id(self, screen):
+    def draw_agent_id(self, screen, font):
         # Draw assigned_task_id next to agent position
         text_surface = font.render(f"agent_id: {self.agent_id}", True, (50, 50, 50))
         screen.blit(text_surface, (self.position[0] + 10, self.position[1] - 10))
 
-    def draw_assigned_task_id(self, screen):
+    def draw_assigned_task_id(self, screen, font):
         # Draw assigned_task_id next to agent position
         if len(self.planned_tasks) > 0:
             assigned_task_id_list = [task.task_id for task in self.planned_tasks]
@@ -209,7 +202,7 @@ class Agent:
         )
         screen.blit(text_surface, (self.position[0] + 10, self.position[1]))
 
-    def draw_work_done(self, screen):
+    def draw_work_done(self, screen, font):
         # Draw assigned_task_id next to agent position
         text_surface = font.render(
             f"dist: {self.distance_moved:.1f}", True, (50, 50, 50)
@@ -267,9 +260,10 @@ class Agent:
             start_pos = task_position
 
     def update_color(self):
-        self.color = task_colors.get(
-            self.assigned_task_id, (20, 20, 20)
-        )  # Default to Dark Grey if no task is assigned
+        if task_colors:
+            self.color = task_colors.get(
+                self.assigned_task_id, (20, 20, 20)
+            )  # Default to Dark Grey if no task is assigned
 
     def set_assigned_task_id(self, task_id):
         self.assigned_task_id = task_id

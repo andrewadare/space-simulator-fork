@@ -1,24 +1,39 @@
 from enum import Enum
 import math
 import random
-
-# TODO remove all these globals
+import yaml
 import importlib
-from modules.utils import config
-from plugins.my_decision_making_plugin import *
 
-target_arrive_threshold = config["tasks"]["threshold_done_by_arrival"]
-task_locations = config["tasks"]["locations"]
-sampling_freq = config["simulation"]["sampling_freq"]
+# from modules.utils import config
+from plugins.my_decision_making_plugin import *
+from modules.config import SpaceConfig
+
+
+# print("config:", config)
+
+with open("config.yaml", "r") as f:
+    config_dict = yaml.safe_load(f)
+    # config = SpaceConfig(**config_dict)
+
+target_arrive_threshold = config_dict["tasks"]["threshold_done_by_arrival"]
+task_locations = config_dict["tasks"]["locations"]
+sampling_freq = config_dict["simulation"]["sampling_freq"]
 sampling_time = 1.0 / sampling_freq  # in seconds
-agent_max_random_movement_duration = config.get("agents", {}).get(
+agent_max_random_movement_duration = config_dict.get("agents", {}).get(
     "random_exploration_duration", None
 )
 
-decision_making_module_path = config["decision_making"]["plugin"]
+decision_making_module_path = config_dict["decision_making"]["plugin"]
 module_path, class_name = decision_making_module_path.rsplit(".", 1)
 decision_making_module = importlib.import_module(module_path)
 decision_making_class = getattr(decision_making_module, class_name)
+decision_making_config_class = getattr(decision_making_module, class_name + "Config")
+decision_making_config = decision_making_config_class(
+    **config_dict["decision_making"][class_name]
+)
+
+
+print(decision_making_config)
 
 
 # BT Node List
@@ -108,13 +123,14 @@ class LocalSensingNode(SyncActionNode):
 
 
 # Decision-making node
+# TODO! hardcoded sampling_time in decide()
 class DecisionMakingNode(SyncActionNode):
     def __init__(self, name, agent):
         super().__init__(name, self._decide)
-        self.decision_maker = decision_making_class(agent)
+        self.decision_maker = decision_making_class(agent, decision_making_config)
 
     def _decide(self, agent, blackboard):
-        assigned_task_id = self.decision_maker.decide(blackboard)
+        assigned_task_id = self.decision_maker.decide(blackboard, 1.0)
         agent.set_assigned_task_id(assigned_task_id)
         blackboard["assigned_task_id"] = assigned_task_id
         if assigned_task_id is None:
