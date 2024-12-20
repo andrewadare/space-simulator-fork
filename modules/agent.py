@@ -2,8 +2,7 @@ import pygame
 import math
 
 import modules.behavior_tree as bt
-from modules.utils import generate_positions, parse_behavior_tree
-from modules.task import task_colors
+from modules.utils import parse_behavior_tree
 from modules.configuration_models import AgentConfig
 from modules.task import Task
 
@@ -24,8 +23,8 @@ class Agent:
         self.rotation = 0  # Initial rotation
         self.color = (0, 0, 255)  # Blue color
         self.blackboard = {}
-        self.tasks_info = tasks_info
-        self.all_agents: list[Agent] = []  # TODO. see README
+        self.tasks_info: list[Task] = tasks_info  # TODO see README
+        self.all_agents: list[Agent] = []  # TODO see README
         self.agents_nearby: list[Agent] = []
         self.communication_radius = conf.communication_radius
         self.situation_awareness_radius = conf.situation_awareness_radius
@@ -149,122 +148,6 @@ class Agent:
     def receive_message(self, message):
         self.messages_received.append(message)
 
-    def draw(self, screen):
-        size = 10
-        angle = self.rotation
-
-        # Calculate the triangle points based on the current position and angle
-        p1 = pygame.Vector2(
-            self.position.x + size * math.cos(angle),
-            self.position.y + size * math.sin(angle),
-        )
-        p2 = pygame.Vector2(
-            self.position.x + size * math.cos(angle + 2.5),
-            self.position.y + size * math.sin(angle + 2.5),
-        )
-        p3 = pygame.Vector2(
-            self.position.x + size * math.cos(angle - 2.5),
-            self.position.y + size * math.sin(angle - 2.5),
-        )
-
-        self.update_color()
-        pygame.draw.polygon(screen, self.color, [p1, p2, p3])
-
-    def draw_tail(self, screen):
-        # Draw track
-        if len(self.memory_location) >= 2:
-            pygame.draw.lines(screen, self.color, False, self.memory_location, 1)
-
-    def draw_communication_topology(self, screen, agents):
-        # Draw lines to neighbor agents
-        for neighbor_agent in self.agents_nearby:
-            if neighbor_agent.agent_id > self.agent_id:
-                neighbor_position = agents[neighbor_agent.agent_id].position
-                pygame.draw.line(
-                    screen,
-                    (200, 200, 200),
-                    (int(self.position.x), int(self.position.y)),
-                    (int(neighbor_position.x), int(neighbor_position.y)),
-                )
-
-    def draw_agent_id(self, screen, font):
-        # Draw assigned_task_id next to agent position
-        text_surface = font.render(f"agent_id: {self.agent_id}", True, (50, 50, 50))
-        screen.blit(text_surface, (self.position[0] + 10, self.position[1] - 10))
-
-    def draw_assigned_task_id(self, screen, font):
-        # Draw assigned_task_id next to agent position
-        if len(self.planned_tasks) > 0:
-            assigned_task_id_list = [task.task_id for task in self.planned_tasks]
-        else:
-            assigned_task_id_list = self.assigned_task_id
-        text_surface = font.render(
-            f"task_id: {assigned_task_id_list}", True, (50, 50, 50)
-        )
-        screen.blit(text_surface, (self.position[0] + 10, self.position[1]))
-
-    def draw_work_done(self, screen, font):
-        # Draw assigned_task_id next to agent position
-        text_surface = font.render(
-            f"dist: {self.distance_moved:.1f}", True, (50, 50, 50)
-        )
-        screen.blit(text_surface, (self.position[0] + 10, self.position[1] + 10))
-        text_surface = font.render(
-            f"work: {self.task_amount_done:.1f}", True, (50, 50, 50)
-        )
-        screen.blit(text_surface, (self.position[0] + 10, self.position[1] + 20))
-
-    def draw_situation_awareness_circle(self, screen):
-        # Draw the situation awareness radius circle
-        if self.situation_awareness_radius > 0:
-            pygame.draw.circle(
-                screen,
-                self.color,
-                (self.position[0], self.position[1]),
-                self.situation_awareness_radius,
-                1,
-            )
-
-    def draw_path_to_assigned_tasks(self, screen):
-        # Starting position is the agent's current position
-        start_pos = self.position
-
-        # Define line thickness
-        line_thickness = 3  # Set the desired thickness for the lines
-        # line_thickness = 16-4*self.agent_id  # Set the desired thickness for the lines
-
-        # For Debug
-        color_list = [
-            (255, 0, 0),  # Red
-            (0, 255, 0),  # Green
-            (0, 0, 255),  # Blue
-            (255, 255, 0),  # Yellow
-            (255, 0, 255),  # Magenta
-            (0, 255, 255),  # Cyan
-            (255, 165, 0),  # Orange
-            (128, 0, 128),  # Purple
-            (255, 192, 203),  # Pink
-        ]
-
-        # Iterate over the assigned tasks and draw lines connecting them
-        for task in self.planned_tasks:
-            task_position = task.position
-            pygame.draw.line(
-                screen,
-                # (255, 0, 0),  # Color for the path line (Red)
-                color_list[self.agent_id % len(color_list)],
-                (int(start_pos.x), int(start_pos.y)),
-                (int(task_position.x), int(task_position.y)),
-                line_thickness,  # Thickness of the line
-            )
-            # Update the start position for the next segment
-            start_pos = task_position
-
-    def update_color(self):
-        if task_colors:
-            # Default to Dark Grey if no task is assigned
-            self.color = task_colors.get(self.assigned_task_id, (20, 20, 20))
-
     def set_assigned_task_id(self, task_id):
         self.assigned_task_id = task_id
 
@@ -319,25 +202,3 @@ class Agent:
 
     def update_task_amount_done(self, amount):
         self.task_amount_done += amount
-
-
-def generate_agents(tasks: list[Task], agent_config: AgentConfig):
-
-    agents_positions = generate_positions(
-        agent_config.quantity,
-        agent_config.locations.x_min,
-        agent_config.locations.x_max,
-        agent_config.locations.y_min,
-        agent_config.locations.y_max,
-        radius=agent_config.locations.non_overlap_radius,
-    )
-
-    agents = [
-        Agent(idx, pos, tasks, agent_config) for idx, pos in enumerate(agents_positions)
-    ]
-
-    for agent in agents:
-        agent.all_agents = agents  # TODO see README
-        agent.create_behavior_tree()  # TODO why not call this in constructor?
-
-    return agents

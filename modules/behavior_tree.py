@@ -31,9 +31,6 @@ decision_making_config = decision_making_config_class(
 )
 
 
-print(decision_making_config)
-
-
 # BT Node List
 class BehaviorTreeList:
     CONTROL_NODES = ["Sequence", "Fallback"]
@@ -161,7 +158,9 @@ class TaskExecutingNode(SyncActionNode):
                 # Agent reached the task position
                 if agent.tasks_info[assigned_task_id].completed:
                     return Status.SUCCESS
-                agent.tasks_info[assigned_task_id].reduce_amount(agent.work_rate)
+                agent.tasks_info[assigned_task_id].reduce_amount(
+                    agent.work_rate * sampling_time
+                )
                 agent.update_task_amount_done(agent.work_rate)
 
             # Move towards the task position

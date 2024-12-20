@@ -9,12 +9,15 @@ from modules.utils import pre_render_text
 from modules.configuration_models import (
     SpaceConfig,
     SimConfig,
+    TaskConfig,
     DynamicTaskGenerationConfig,
     RenderingMode,
     RenderingOptions,
 )
-from modules.task import generate_tasks
-from modules.agent import generate_agents
+from modules.simulation import generate_tasks, generate_agents
+
+
+import modules.visualization as vis
 
 
 parser = argparse.ArgumentParser(
@@ -34,6 +37,8 @@ async def game_loop(config: SpaceConfig):
     sim_config: SimConfig = config.simulation
     task_gen: DynamicTaskGenerationConfig = config.tasks.dynamic_task_generation
     rend_opts: RenderingOptions = config.simulation.rendering_options
+
+    vis.set_task_colors(config.tasks)
 
     # Simulation timestep in seconds
     sampling_time = 1.0 / sim_config.sampling_freq
@@ -109,11 +114,13 @@ async def game_loop(config: SpaceConfig):
             # Dynamic task generation
             if task_gen.enabled and generation_count < task_gen.max_generations:
                 if simulation_time - last_generation_time >= task_gen.interval_seconds:
+
                     new_task_id_start = len(tasks)
                     new_tasks = generate_tasks(
                         config,
                         task_quantity=task_gen.tasks_per_generation,
                         task_id_start=new_task_id_start,
+                        # colors=vis.TASK_COLORS,
                     )
                     tasks.extend(new_tasks)
                     last_generation_time = simulation_time
@@ -130,29 +137,31 @@ async def game_loop(config: SpaceConfig):
                 # Draw agents network topology
                 if rend_opts.agent_communication_topology:
                     for agent in agents:
-                        agent.draw_communication_topology(screen, agents)
+                        vis.draw_communication_topology(agent, screen, agents)
 
                 # Draw agents
                 for agent in agents:
                     if rend_opts.agent_path_to_assigned_tasks:
-                        agent.draw_path_to_assigned_tasks(screen)
+                        vis.draw_path_to_assigned_tasks(agent, screen)
                     if rend_opts.agent_tail:
-                        agent.draw_tail(screen)
+                        vis.draw_tail(agent, screen)
                     if rend_opts.agent_id:
-                        agent.draw_agent_id(screen, font)
+                        vis.draw_agent_id(agent, screen, font)
                     if rend_opts.agent_assigned_task_id:
-                        agent.draw_assigned_task_id(screen, font)
+                        vis.draw_assigned_task_id(agent, screen, font)
                     if rend_opts.agent_work_done:
-                        agent.draw_work_done(screen, font)
+                        vis.draw_work_done(agent, screen, font)
                     if rend_opts.agent_situation_awareness_circle:
-                        agent.draw_situation_awareness_circle(screen)
-                    agent.draw(screen)
+                        vis.draw_situation_awareness_circle(agent, screen)
+                    vis.draw_agent(agent, screen)
 
                 # Draw tasks with task_id displayed
                 for task in tasks:
-                    task.draw(screen)
+
+                    vis.draw_task(task, screen, sim_config.task_visualisation_factor)
+
                     if rend_opts.task_id:
-                        task.draw_task_id(screen)
+                        vis.draw_task_id(task, screen)
 
                 # Display task quantity and elapsed simulation time
                 task_time_text = pre_render_text(

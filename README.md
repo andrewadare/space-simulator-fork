@@ -49,6 +49,8 @@ Consider using [`typing.Protocol`](https://peps.python.org/pep-0544/) to help co
 
 Each agent holds a list of every other agent in the sim, when all it should know about is its neighbor set. See `Agent.all_agents`, renamed from `agents_info`. Can this be modeled more efficiently and realistically?
 
+Similarly, each agent knows about all available tasks. How would an agent come to know this in the real world?
+
 It seems strange that each agent owns a blackboard. Wouldn't it be simpler for `Node` to own it?
 Also, the blackboard is just a dict. Pro: flexibility; Con: flexibility. What would it take to make this threadsafe?
 
