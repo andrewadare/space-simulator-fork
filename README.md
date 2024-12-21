@@ -45,6 +45,8 @@ It is also nice that the focus is on multi-agent tasking and execution without b
 
 ### Other thoughts
 
+A `Task` is really a just a waypoint. The only difference is the `amount` field.
+
 Consider using [`typing.Protocol`](https://peps.python.org/pep-0544/) to help constrain and solidify the decision-making plugin pattern, e.g. `DecisionLogic`.
 
 Each agent holds a list of every other agent in the sim, when all it should know about is its neighbor set. See `Agent.all_agents`, renamed from `agents_info`. Can this be modeled more efficiently and realistically?
