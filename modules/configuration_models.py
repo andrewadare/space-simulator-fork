@@ -25,10 +25,10 @@ class FloatRange(BaseModel):
 
 
 class OperatingArea(BaseModel):
-    x_min: float
-    x_max: float
-    y_min: float
-    y_max: float
+    x_min: int
+    x_max: int
+    y_min: int
+    y_max: int
     non_overlap_radius: NonNegativeFloat
 
 
@@ -109,7 +109,7 @@ class SpaceConfig(BaseModel):
     agents: AgentConfig
     tasks: TaskConfig
     simulation: SimConfig
-    decision_making: Any  # Custom config
+    decision_making: dict  # Custom config
 
 
 if __name__ == "__main__":
