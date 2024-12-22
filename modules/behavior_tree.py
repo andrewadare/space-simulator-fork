@@ -84,7 +84,7 @@ def create_node(
     children = []
 
     for child in xml_node:
-        children.append(create_node(child))
+        children.append(create_node(child, action_callbacks, root_tag))
 
     if name in ["SequenceNode", "Sequence"]:
         return SequenceNode(name, children=children)

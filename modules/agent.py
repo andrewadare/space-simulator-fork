@@ -2,19 +2,13 @@ import pygame
 import math
 import random
 import importlib
+from pathlib import Path
 
 from modules.behavior_tree import create_behavior_tree, Status, Node, ReturnsStatus
 from modules.configuration_models import SpaceConfig
 from modules.task import Task
 
 agent_track_size = 400  # TODO
-
-
-def get_decision_making_class(config:dict):
-    # decision_making_module_path = config["decision_making"]["plugin"]
-    # module_path, class_name = decision_making_module_path.rsplit(".", 1)
-    # decision_making_module = importlib.import_module(module_path)
-    # decision_making_class = getattr(decision_making_module, class_name)
 
 
 def get_random_position(x_min, x_max, y_min, y_max):
@@ -53,7 +47,7 @@ class Agent:
 
         # TODO
         self.timestep = 1.0
-        self.task_assigner = get_decision_making_class(conf.decision_making.)
+        self.task_assigner = create_task_decider(self, conf.decision_making)
 
         # Create behavior tree for this agent.
         # Agent behaviors are bound to action nodes as callbacks.
@@ -64,7 +58,7 @@ class Agent:
             ExplorationNode=self.explore,
         )
         self.tree: Node = create_behavior_tree(
-            conf.agents.behavior_tree_xml, self.node_callbacks
+            Path("bt_xml") / conf.agents.behavior_tree_xml, self.node_callbacks
         )
 
     def sense(self) -> Status:
@@ -269,3 +263,18 @@ class Agent:
 
     def update_task_amount_done(self, amount):
         self.task_amount_done += amount
+
+
+def create_task_decider(agent: Agent, config_dict: dict):
+    """Factory for creating an object used to guide agents in which task to pursue next.
+    Types are loaded from a plugin module.
+
+    TODO: only CBBA is supported, need to convert global dicts to *Config classes for other types.
+    """
+
+    module_path, class_name = config_dict["plugin"].rsplit(".", 1)
+    module = importlib.import_module(module_path)
+    cls = getattr(module, class_name)
+    config_cls = getattr(module, class_name + "Config")
+    config_obj = config_cls(**config_dict[class_name])
+    return cls(agent, config_obj)
