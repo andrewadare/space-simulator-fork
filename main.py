@@ -2,7 +2,6 @@ import pygame
 import asyncio
 import argparse
 import cProfile
-import importlib
 import yaml
 
 import modules.visualization as vis
@@ -41,7 +40,7 @@ async def game_loop(config: SpaceConfig):
 
     # Initialize agents with behavior trees, giving them the information of current tasks
     tasks = generate_tasks(config, config.tasks.quantity, 0)
-    agents = generate_agents(tasks, config.agents)
+    agents = generate_agents(tasks, config)
 
     # Initialize pygame
     pygame.init()

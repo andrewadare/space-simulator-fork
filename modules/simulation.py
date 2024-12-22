@@ -46,15 +46,15 @@ def generate_tasks(
     return tasks
 
 
-def generate_agents(tasks: list[Task], config: AgentConfig):
+def generate_agents(tasks: list[Task], config: SpaceConfig):
 
     agents_positions = generate_positions(
-        config.quantity,
-        config.locations.x_min,
-        config.locations.x_max,
-        config.locations.y_min,
-        config.locations.y_max,
-        radius=config.locations.non_overlap_radius,
+        config.agents.quantity,
+        config.agents.locations.x_min,
+        config.agents.locations.x_max,
+        config.agents.locations.y_min,
+        config.agents.locations.y_max,
+        radius=config.agents.locations.non_overlap_radius,
     )
 
     agents = [
@@ -63,6 +63,5 @@ def generate_agents(tasks: list[Task], config: AgentConfig):
 
     for agent in agents:
         agent.all_agents = agents  # TODO see README
-        agent.create_behavior_tree()  # TODO why not call this in constructor?
 
     return agents
