@@ -1,17 +1,20 @@
 import pygame
 import math
 import random
+import importlib
 
-import modules.behavior_tree as bt
-from modules.utils import parse_behavior_tree
+from modules.behavior_tree import create_behavior_tree, Status, Node, ReturnsStatus
 from modules.configuration_models import SpaceConfig
 from modules.task import Task
 
 agent_track_size = 400  # TODO
 
 
-def get_decision_making_class(conf: SpaceConfig):
-    pass
+def get_decision_making_class(config:dict):
+    # decision_making_module_path = config["decision_making"]["plugin"]
+    # module_path, class_name = decision_making_module_path.rsplit(".", 1)
+    # decision_making_module = importlib.import_module(module_path)
+    # decision_making_class = getattr(decision_making_module, class_name)
 
 
 def get_random_position(x_min, x_max, y_min, y_max):
@@ -44,34 +47,45 @@ class Agent:
         self.planned_tasks = []  # Local decision-making result.
         self.distance_moved = 0.0
         self.task_amount_done = 0.0
-        self.tree = None
         self.task_threshold = conf.tasks.threshold_done_by_arrival
         self.random_exploration_duration = conf.agents.random_exploration_duration
         self.bounds = conf.tasks.locations
 
         # TODO
         self.timestep = 1.0
-        self.task_assigner = get_decision_making_class(conf)
+        self.task_assigner = get_decision_making_class(conf.decision_making.)
 
-    def sense(self) -> bt.Status:
+        # Create behavior tree for this agent.
+        # Agent behaviors are bound to action nodes as callbacks.
+        self.node_callbacks: dict[str, ReturnsStatus] = dict(
+            LocalSensingNode=self.sense,
+            DecisionMakingNode=self.decide_task,
+            TaskExecutingNode=self.goto_task,
+            ExplorationNode=self.explore,
+        )
+        self.tree: Node = create_behavior_tree(
+            conf.agents.behavior_tree_xml, self.node_callbacks
+        )
+
+    def sense(self) -> Status:
         """Find waypoints and other agents in this agent's vicinity."""
         self.blackboard["local_tasks_info"] = self.get_tasks_nearby(
             with_completed_task=False
         )
         self.blackboard["local_agents_info"] = self.local_message_receive()
-        self.blackboard["LocalSensingNode"] = bt.Status.SUCCESS
-        return bt.Status.SUCCESS
+        self.blackboard["LocalSensingNode"] = Status.SUCCESS
+        return Status.SUCCESS
 
-    def decide_task(self) -> bt.Status:
+    def decide_task(self) -> Status:
         """Decide which waypoint to visit."""
         assigned_task_id = self.task_assigner.decide(self.blackboard, self.timestep)
-        status = bt.Status.FAILURE if assigned_task_id is None else bt.Status.SUCCESS
+        status = Status.FAILURE if assigned_task_id is None else Status.SUCCESS
         self.set_assigned_task_id(assigned_task_id)
         self.blackboard["assigned_task_id"] = assigned_task_id
         self.blackboard["DecisionMakingNode"] = status
         return status
 
-    def goto_task(self) -> bt.Status:
+    def goto_task(self) -> Status:
         """Go to assigned task position."""
         assigned_task_id = self.blackboard.get("assigned_task_id")
 
@@ -84,18 +98,18 @@ class Agent:
                 < goal.radius + self.task_threshold
             ):
                 if goal.completed:
-                    self.blackboard["TaskExecutingNode"] = bt.Status.SUCCESS
-                    return bt.Status.SUCCESS
+                    self.blackboard["TaskExecutingNode"] = Status.SUCCESS
+                    return Status.SUCCESS
                 self.tasks_info[assigned_task_id].reduce_amount(
                     self.work_rate * self.timestep
                 )
                 self.update_task_amount_done(self.work_rate)
             self.follow(goal.position)
 
-        self.blackboard["TaskExecutingNode"] = bt.Status.RUNNING
-        return bt.Status.RUNNING
+        self.blackboard["TaskExecutingNode"] = Status.RUNNING
+        return Status.RUNNING
 
-    def explore(self, _t=float("inf"), _waypoint=(0, 0)) -> bt.Status:
+    def explore(self, _t=float("inf"), _waypoint=(0, 0)) -> Status:
         """Look busy by moving to a random imaginary waypoint.
 
         Keyword args are used only as static function variables - do not assign.
@@ -113,44 +127,18 @@ class Agent:
         self.blackboard["random_waypoint"] = _waypoint
         _t += self.timestep
         self.follow(_waypoint)
-        self.blackboard["ExplorationNode"] = bt.Status.RUNNING
-        return bt.Status.RUNNING
-
-    def create_behavior_tree(self):
-        self.tree = self._create_behavior_tree()
-
-    def _create_behavior_tree(self) -> bt.Node:
-        xml_root = parse_behavior_tree(f"bt_xml/default_bt.xml")
-        behavior_tree = self._parse_xml_to_bt(xml_root.find("BehaviorTree"))
-        return behavior_tree
-
-    def _parse_xml_to_bt(self, xml_node):
-        node_type = xml_node.tag
-        children = []
-
-        for child in xml_node:
-            children.append(self._parse_xml_to_bt(child))
-
-        if node_type in bt.BehaviorTreeList.CONTROL_NODES:
-            control_class = getattr(bt, node_type)
-            return control_class(node_type, children=children)
-        elif node_type in bt.BehaviorTreeList.ACTION_NODES:
-            action_class = getattr(bt, node_type)
-            return action_class(node_type, self)
-        elif node_type == "BehaviorTree":  # Root
-            return children[0]
-        else:
-            raise ValueError(f"[ERROR] Unknown behavior node type: {node_type}")
+        self.blackboard["ExplorationNode"] = Status.RUNNING
+        return Status.RUNNING
 
     def _reset_bt_action_node_status(self):
         self.blackboard = {
-            key: None if key in bt.BehaviorTreeList.ACTION_NODES else value
+            key: None if key in self.node_callbacks else value
             for key, value in self.blackboard.items()
         }
 
     async def run_tree(self):
         self._reset_bt_action_node_status()
-        return await self.tree.run(self, self.blackboard)
+        return await self.tree.run()
 
     def follow(self, target):
         # Calculate desired velocity
