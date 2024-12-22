@@ -124,14 +124,12 @@ class Agent:
         self.blackboard["ExplorationNode"] = Status.RUNNING
         return Status.RUNNING
 
-    def _reset_bt_action_node_status(self):
+    async def run_tree(self):
+        # Reset action node statuses
         self.blackboard = {
             key: None if key in self.node_callbacks else value
             for key, value in self.blackboard.items()
         }
-
-    async def run_tree(self):
-        self._reset_bt_action_node_status()
         return await self.tree.run()
 
     def follow(self, target):
