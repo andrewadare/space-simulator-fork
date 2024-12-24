@@ -72,6 +72,8 @@ class AgentConfig(BaseModel):
     communication_radius: PositiveFloat
     situation_awareness_radius: PositiveFloat  # 0 represents "global", meaning that each agent can access to the information of all the tasks
     random_exploration_duration: PositiveFloat  # sec
+    timestep: PositiveFloat = Field(default=1.0)
+    radius: PositiveFloat = Field(default=10.0)
 
 
 class TaskConfig(BaseModel):

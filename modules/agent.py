@@ -6,46 +6,50 @@ from pathlib import Path
 from collections import deque
 
 from modules.behavior_tree import create_behavior_tree, Status, Node, ReturnsStatus
-from modules.configuration_models import SpaceConfig
+from modules.configuration_models import SpaceConfig, OperatingArea
 from modules.task import Task
 
 
-def get_random_position(x_min, x_max, y_min, y_max) -> tuple[int, int]:
+def get_random_position(x_min, x_max, y_min, y_max) -> tuple[float, float]:
     return (random.uniform(x_min, x_max), random.uniform(y_min, y_max))
 
 
 class Agent:
     def __init__(self, agent_id, position, tasks_info, conf: SpaceConfig):
         self.agent_id = agent_id
+
+        # Motion
         self.position = np.array(position)
         self.velocity = np.zeros(2)
         self.acceleration = np.zeros(2)
+        self.rotation = 0
+
+        # Configurable constant parameters
         self.max_speed = conf.agents.max_speed
         self.max_accel = conf.agents.max_accel
         self.max_angular_speed = conf.agents.max_angular_speed
         self.work_rate = conf.agents.work_rate
+        self.communication_radius = conf.agents.communication_radius
+        self.situation_awareness_radius = conf.agents.situation_awareness_radius
+        self.target_approach_radius = conf.agents.target_approaching_radius
+        self.random_exploration_duration = conf.agents.random_exploration_duration
+        self.timestep = conf.agents.timestep
+        self.radius = conf.agents.radius
+
+        self.bounds = conf.tasks.locations
+
         self.tail = deque(maxlen=conf.simulation.agent_track_size)
-        self.rotation = 0  # Initial rotation
-        self.color = (0, 0, 255)  # Blue color
         self.blackboard = {}
         self.tasks_info: list[Task] = tasks_info  # TODO see README
         self.all_agents: list[Agent] = []  # TODO see README
         self.agents_nearby: list[Agent] = []
-        self.communication_radius = conf.agents.communication_radius
-        self.situation_awareness_radius = conf.agents.situation_awareness_radius
-        self.target_approach_radius = conf.agents.target_approaching_radius
         self.message_to_share = {}
         self.messages_received = []
         self.assigned_task_id = None  # Local decision-making result.
         self.planned_tasks = []  # Local decision-making result.
         self.distance_moved = 0.0
         self.task_amount_done = 0.0
-        self.task_threshold = conf.tasks.threshold_done_by_arrival
-        self.random_exploration_duration = conf.agents.random_exploration_duration
-        self.bounds = conf.tasks.locations
 
-        # TODO
-        self.timestep = 1.0
         self.task_assigner = create_task_decider(self, conf.decision_making)
 
         # Create behavior tree for this agent.
@@ -85,11 +89,11 @@ class Agent:
         if assigned_task_id is not None:
             goal: Task = self.tasks_info[assigned_task_id]
 
-            # Check if agent reached the task position
-            if (
-                np.linalg.norm(goal.position - self.position)
-                < goal.radius + self.task_threshold
-            ):
+            # Check if agent reached the task position.
+            # NOTE: in original implementation, threshold_done_by_arrival
+            # is added to task.radius. Here, use agent.radius for same effect.
+            distance = np.linalg.norm(goal.position - self.position)
+            if distance < goal.radius + self.radius:
                 if goal.completed:
                     self.blackboard["TaskExecutingNode"] = Status.SUCCESS
                     return Status.SUCCESS
@@ -107,7 +111,6 @@ class Agent:
 
         Keyword args are used only as static function variables - do not assign.
         """
-        # Move towards a random position
         if _t > self.random_exploration_duration:
             _waypoint = get_random_position(
                 self.bounds.x_min,

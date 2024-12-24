@@ -36,6 +36,8 @@ It is also nice that the focus is on multi-agent tasking and execution without b
     * [ ] Add an examples/ dir and put main.py there?
  - [ ] main.py needs heavy refactoring and cleanup.
  - [ ] Apply consistent source formatting everywhere (black formatter)
+ - [ ] Make `timestep` an agent parameter.
+ - [ ] Replace `threshold_done_by_arrival` with an Agent.radius parameter (simplifies config; conceptually clearer)
 
 ### New capabilities and features
 

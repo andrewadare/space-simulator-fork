@@ -40,7 +40,7 @@ def generate_tasks(
     tasks = []
     for idx, pos in enumerate(tasks_positions):
         amount = random.uniform(config.tasks.amounts.min, config.tasks.amounts.max)
-        radius = amount / config.simulation.task_visualisation_factor
+        radius = max(1, amount / config.simulation.task_visualisation_factor)
         tasks.append(Task(idx + task_id_start, pos, radius, amount))
 
     return tasks

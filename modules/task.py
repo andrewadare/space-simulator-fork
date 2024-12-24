@@ -13,6 +13,6 @@ class Task:
 
     def reduce_amount(self, amount: float):
         self.amount -= amount
-        # self.amount -= work_rate * sampling_time
+
         if self.amount <= 0:
             self.completed = True
