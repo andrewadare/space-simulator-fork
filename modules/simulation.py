@@ -1,9 +1,13 @@
 import random
+import importlib
 
 
 from modules.configuration_models import SpaceConfig
 from modules.task import Task
 from modules.agent import Agent
+
+
+"""TODO rename this file to factories.py (?)"""
 
 
 def generate_positions(quantity, x_min, x_max, y_min, y_max, radius=10):
@@ -48,7 +52,7 @@ def generate_tasks(
 
 def generate_agents(tasks: list[Task], config: SpaceConfig):
 
-    agents_positions = generate_positions(
+    positions = generate_positions(
         config.agents.quantity,
         config.agents.locations.x_min,
         config.agents.locations.x_max,
@@ -57,11 +61,28 @@ def generate_agents(tasks: list[Task], config: SpaceConfig):
         radius=config.agents.locations.non_overlap_radius,
     )
 
-    agents = [
-        Agent(idx, pos, tasks, config) for idx, pos in enumerate(agents_positions)
-    ]
+    bounds = config.tasks.locations
+
+    params = config.agents
+    agents = [Agent(i, pos, tasks, bounds, params) for i, pos in enumerate(positions)]
 
     for agent in agents:
         agent.all_agents = agents  # TODO see README
+        agent.task_assigner = create_task_decider(agent, config.decision_making)
 
     return agents
+
+
+def create_task_decider(agent: Agent, config_dict: dict):
+    """Factory for creating an object used to guide agents in which task to pursue next.
+    Types are loaded from a plugin module.
+
+    TODO: only CBBA is supported, need to convert global dicts to *Config classes for other types.
+    """
+
+    module_path, class_name = config_dict["plugin"].rsplit(".", 1)
+    module = importlib.import_module(module_path)
+    cls = getattr(module, class_name)
+    config_cls = getattr(module, class_name + "Config")
+    config_obj = config_cls(**config_dict[class_name])
+    return cls(agent, config_obj)

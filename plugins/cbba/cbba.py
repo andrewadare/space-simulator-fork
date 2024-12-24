@@ -426,8 +426,8 @@ class CBBA:
             expected_reward_from_task += (
                 self.conf.task_reward_discount_factor
                 ** (
-                    distance_to_next_task_from_start / self.agent.max_speed
-                    + task.amount / self.agent.work_rate
+                    distance_to_next_task_from_start / self.agent.params.max_speed
+                    + task.amount / self.agent.params.work_rate
                 )
                 * task.amount
             )

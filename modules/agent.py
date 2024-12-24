@@ -1,46 +1,39 @@
 import numpy as np
 import math
 import random
-import importlib
 from pathlib import Path
 from collections import deque
 
 from modules.behavior_tree import create_behavior_tree, Status, Node, ReturnsStatus
-from modules.configuration_models import SpaceConfig, OperatingArea
+from modules.configuration_models import AgentConfig, OperatingArea
 from modules.task import Task
 
 
-def get_random_position(x_min, x_max, y_min, y_max) -> tuple[float, float]:
-    return (random.uniform(x_min, x_max), random.uniform(y_min, y_max))
+def get_random_point(bounds: OperatingArea) -> tuple[float, float]:
+    x = random.uniform(bounds.x_min, bounds.x_max)
+    y = random.uniform(bounds.y_min, bounds.y_max)
+    return (x, y)
 
 
 class Agent:
-    def __init__(self, agent_id, position, tasks_info, conf: SpaceConfig):
+    def __init__(
+        self,
+        agent_id: int,
+        position: np.ndarray,
+        tasks: list[Task],
+        bounds: OperatingArea,
+        conf: AgentConfig,
+    ):
         self.agent_id = agent_id
-
-        # Motion
         self.position = np.array(position)
         self.velocity = np.zeros(2)
         self.acceleration = np.zeros(2)
         self.rotation = 0
-
-        # Configurable constant parameters
-        self.max_speed = conf.agents.max_speed
-        self.max_accel = conf.agents.max_accel
-        self.max_angular_speed = conf.agents.max_angular_speed
-        self.work_rate = conf.agents.work_rate
-        self.communication_radius = conf.agents.communication_radius
-        self.situation_awareness_radius = conf.agents.situation_awareness_radius
-        self.target_approach_radius = conf.agents.target_approaching_radius
-        self.random_exploration_duration = conf.agents.random_exploration_duration
-        self.timestep = conf.agents.timestep
-        self.radius = conf.agents.radius
-
-        self.bounds = conf.tasks.locations
-
-        self.tail = deque(maxlen=conf.simulation.agent_track_size)
+        self.bounds = bounds
+        self.params = conf
+        self.tail = deque(maxlen=400)
         self.blackboard = {}
-        self.tasks_info: list[Task] = tasks_info  # TODO see README
+        self.tasks_info: list[Task] = tasks  # TODO see README
         self.all_agents: list[Agent] = []  # TODO see README
         self.agents_nearby: list[Agent] = []
         self.message_to_share = {}
@@ -50,7 +43,9 @@ class Agent:
         self.distance_moved = 0.0
         self.task_amount_done = 0.0
 
-        self.task_assigner = create_task_decider(self, conf.decision_making)
+        # TODO: find a way to make this external to Agent
+        # self.task_assigner = create_task_decider(self, conf.decision_making)
+        self.task_assigner = None
 
         # Create behavior tree for this agent.
         # Agent behaviors are bound to action nodes as callbacks.
@@ -61,7 +56,7 @@ class Agent:
             ExplorationNode=self.explore,
         )
         self.tree: Node = create_behavior_tree(
-            Path("bt_xml") / conf.agents.behavior_tree_xml, self.node_callbacks
+            Path("bt_xml") / conf.behavior_tree_xml, self.node_callbacks
         )
 
     def sense(self) -> Status:
@@ -75,7 +70,9 @@ class Agent:
 
     def decide_task(self) -> Status:
         """Decide which waypoint to visit."""
-        assigned_task_id = self.task_assigner.decide(self.blackboard, self.timestep)
+        assigned_task_id = self.task_assigner.decide(
+            self.blackboard, self.params.timestep
+        )
         status = Status.FAILURE if assigned_task_id is None else Status.SUCCESS
         self.set_assigned_task_id(assigned_task_id)
         self.blackboard["assigned_task_id"] = assigned_task_id
@@ -93,14 +90,14 @@ class Agent:
             # NOTE: in original implementation, threshold_done_by_arrival
             # is added to task.radius. Here, use agent.radius for same effect.
             distance = np.linalg.norm(goal.position - self.position)
-            if distance < goal.radius + self.radius:
+            if distance < goal.radius + self.params.radius:
                 if goal.completed:
                     self.blackboard["TaskExecutingNode"] = Status.SUCCESS
                     return Status.SUCCESS
                 self.tasks_info[assigned_task_id].reduce_amount(
-                    self.work_rate * self.timestep
+                    self.params.work_rate * self.params.timestep
                 )
-                self.update_task_amount_done(self.work_rate)
+                self.update_task_amount_done(self.params.work_rate)
             self.follow(goal.position)
 
         self.blackboard["TaskExecutingNode"] = Status.RUNNING
@@ -111,17 +108,12 @@ class Agent:
 
         Keyword args are used only as static function variables - do not assign.
         """
-        if _t > self.random_exploration_duration:
-            _waypoint = get_random_position(
-                self.bounds.x_min,
-                self.bounds.x_max,
-                self.bounds.y_min,
-                self.bounds.y_max,
-            )
-            _t = 0  # Initialisation
+        if _t > self.params.random_exploration_duration:
+            _waypoint = get_random_point(self.bounds)
+            _t = 0
 
         self.blackboard["random_waypoint"] = _waypoint
-        _t += self.timestep
+        _t += self.params.timestep
         self.follow(_waypoint)
         self.blackboard["ExplorationNode"] = Status.RUNNING
         return Status.RUNNING
@@ -139,18 +131,18 @@ class Agent:
         offset = target - self.position
         distance = np.linalg.norm(offset)
         direction = offset / distance
-        speed = self.max_speed
-        if distance < self.target_approach_radius:
-            speed *= distance / self.target_approach_radius
+        speed = self.params.max_speed
+        if distance < self.params.target_approaching_radius:
+            speed *= distance / self.params.target_approaching_radius
 
         self.acceleration = self.limit(
-            self.acceleration + speed * direction - self.velocity, self.max_accel
+            self.acceleration + speed * direction - self.velocity, self.params.max_accel
         )
 
     def update(self, timestep: float):
         # Update velocity and position
         self.velocity += self.acceleration * timestep
-        self.velocity = self.limit(self.velocity, self.max_speed)
+        self.velocity = self.limit(self.velocity, self.params.max_speed)
         self.position += self.velocity * timestep
         self.acceleration *= 0  # Reset acceleration
 
@@ -168,8 +160,8 @@ class Agent:
             rotation_diff += 2 * math.pi
 
         # Limit angular velocity
-        if abs(rotation_diff) > self.max_angular_speed:
-            rotation_diff = math.copysign(self.max_angular_speed, rotation_diff)
+        if abs(rotation_diff) > self.params.max_angular_speed:
+            rotation_diff = math.copysign(self.params.max_angular_speed, rotation_diff)
 
         self.rotation += rotation_diff * timestep
 
@@ -205,7 +197,7 @@ class Agent:
         self.planned_tasks = task_list
 
     def get_agents_nearby(self):
-        r2 = self.communication_radius**2
+        r2 = self.params.communication_radius**2
         nearby_agents: list[Agent] = []
         for agent in self.all_agents:
             if agent.agent_id == self.agent_id:
@@ -223,7 +215,7 @@ class Agent:
         else:
             tasks = self.tasks_info
 
-        r2 = self.situation_awareness_radius**2
+        r2 = self.params.situation_awareness_radius**2
         nearby_tasks: list[Task] = []
         for task in tasks:
             d = task.position - self.position
@@ -234,18 +226,3 @@ class Agent:
 
     def update_task_amount_done(self, amount):
         self.task_amount_done += amount
-
-
-def create_task_decider(agent: Agent, config_dict: dict):
-    """Factory for creating an object used to guide agents in which task to pursue next.
-    Types are loaded from a plugin module.
-
-    TODO: only CBBA is supported, need to convert global dicts to *Config classes for other types.
-    """
-
-    module_path, class_name = config_dict["plugin"].rsplit(".", 1)
-    module = importlib.import_module(module_path)
-    cls = getattr(module, class_name)
-    config_cls = getattr(module, class_name + "Config")
-    config_obj = config_cls(**config_dict[class_name])
-    return cls(agent, config_obj)
