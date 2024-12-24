@@ -73,6 +73,10 @@ class Agent:
         assigned_task_id = self.task_assigner.decide(
             self.blackboard, self.params.timestep
         )
+
+        # "Publish" decision making info
+        self.message_to_share = self.task_assigner.message_to_share
+
         status = Status.FAILURE if assigned_task_id is None else Status.SUCCESS
         self.set_assigned_task_id(assigned_task_id)
         self.blackboard["assigned_task_id"] = assigned_task_id

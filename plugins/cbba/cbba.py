@@ -42,7 +42,7 @@ class CBBA:
 
         self.phase = Phase.BUILD_BUNDLE
 
-        self.agent.message_to_share = {  # Message Initialization
+        self.message_to_share = {  # Message Initialization
             "agent_id": self.agent.agent_id,
             "winning_agents": self.z,
             "winning_bids": self.y,
@@ -89,12 +89,11 @@ class CBBA:
                 self.no_bundle_duration = 0
 
         # Look for a task within situation awareness radius if there is no existing assigned task
-        # if self.assigned_task is None:
         if self.phase == Phase.BUILD_BUNDLE:
             # Phase 1 Build Bundle
             self.build_bundle(local_tasks_info)
             # Broadcasting
-            self.agent.message_to_share = {
+            self.message_to_share = {
                 "agent_id": self.agent.agent_id,
                 "winning_agents": copy.deepcopy(self.z),
                 "winning_bids": copy.deepcopy(self.y),
@@ -117,6 +116,9 @@ class CBBA:
                     z_k = other_agent_message.get("winning_agents")
                     y_k = other_agent_message.get("winning_bids")
                     s_k = other_agent_message.get("message_received_time_stamp")
+
+                    if y_k is None:
+                        continue
 
                     z_i = self.z
                     y_i = self.y
@@ -334,7 +336,8 @@ class CBBA:
         max_timestamp = {}
         for other_agent_message in self.agent.messages_received:
             time_stamp = other_agent_message.get("message_received_time_stamp")
-            max_timestamp = merge_dicts(max_timestamp, time_stamp)
+            if time_stamp:
+                max_timestamp = merge_dicts(max_timestamp, time_stamp)
 
         # Finally merge
         self.s = merge_dicts(self.s, max_timestamp)
