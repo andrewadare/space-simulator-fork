@@ -6,6 +6,7 @@ from modules.utils import config, merge_dicts
 # Define decision-making class
 class CBAA:
     def __init__(self, agent):
+        self.agent_id = agent.agent_id
         self.agent = agent
         self.assigned_task = None
         self.satisfied = False  # Rename if necessary
@@ -61,7 +62,7 @@ class CBAA:
                 # Broadcasting
                 self.message_to_share = {
                     # Implement your idea (data to share)
-                    "agent_id": self.agent.agent_id,
+                    "agent_id": self.agent_id,
                     "winning_bids": self.y,
                 }
                 self.satisfied = True
@@ -77,7 +78,7 @@ class CBAA:
 
             # Line 4~5
             winner_agent_candidates = {
-                self.agent.agent_id: self.y[best_task_id]
+                self.agent_id: self.y[best_task_id]
             }  # Initialization with myself
             for other_agent_message in self.agent.messages_received:
                 if other_agent_message:
@@ -92,7 +93,7 @@ class CBAA:
             )
 
             # Line 6~8
-            if winner_agent_id != self.agent.agent_id:
+            if winner_agent_id != self.agent_id:
                 self.x[best_task_id] = 0  # Line
                 self.satisfied = False
                 self.assigned_task = None

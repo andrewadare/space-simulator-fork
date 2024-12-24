@@ -17,6 +17,7 @@ SOCIAL_INHIBITION_FACTOR = config["decision_making"]["GRAPE"][
 
 class GRAPE:
     def __init__(self, agent):
+        self.agent_id = agent.agent_id
         self.agent = agent
         self.satisfied = False
         self.evolution_number = 0  # Initialize evolution_number
@@ -38,7 +39,7 @@ class GRAPE:
 
         self.current_utilities = {}
         self.message_to_share = {  # Message Initialization
-            "agent_id": self.agent.agent_id,
+            "agent_id": self.agent_id,
             "partition": self.partition,
             "evolution_number": self.evolution_number,
             "time_stamp": self.time_stamp,
@@ -119,7 +120,7 @@ class GRAPE:
 
             # Broadcasting # NOTE: Implemented separately
             self.message_to_share = {
-                "agent_id": self.agent.agent_id,
+                "agent_id": self.agent_id,
                 "partition": self.partition,
                 "evolution_number": self.evolution_number,
                 "time_stamp": self.time_stamp,
@@ -147,11 +148,11 @@ class GRAPE:
 
     def discard_myself_from_coalition(self, task):
         if task is not None:
-            self.partition[task.task_id].discard(self.agent.agent_id)
+            self.partition[task.task_id].discard(self.agent_id)
 
     def update_partition(self, preferred_task_id):
         self.discard_myself_from_coalition(self.assigned_task)
-        self.partition[preferred_task_id].add(self.agent.agent_id)
+        self.partition[preferred_task_id].add(self.agent_id)
 
     def find_max_utility_task(self, tasks_info):
         _current_utilities = {
@@ -176,7 +177,7 @@ class GRAPE:
             task.task_id, set()
         )  # Ensure the task_id key exists in the partition. Set tis value as empty set if it doesn't already exist (This is for dynamic task generation)
         num_collaborator = len(self.partition[task.task_id])
-        if self.agent.agent_id not in self.partition[task.task_id]:
+        if self.agent_id not in self.partition[task.task_id]:
             num_collaborator += 1
 
         distance = (self.agent.position - task.position).length()
@@ -211,7 +212,7 @@ class GRAPE:
             (
                 task_id
                 for task_id, coalition_members_id in partition.items()
-                if self.agent.agent_id in coalition_members_id
+                if self.agent_id in coalition_members_id
             ),
             None,
         )

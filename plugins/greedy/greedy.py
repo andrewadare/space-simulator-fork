@@ -11,6 +11,7 @@ ENFORCED_COLLABORATION = config["decision_making"]["FirstClaimGreedy"].get(
 
 class FirstClaimGreedy:  # Task selection within each agent's `situation_awareness_radius`
     def __init__(self, agent):
+        self.agent_id = agent.agent_id
         self.agent = agent
         self.assigned_task = None
 
@@ -31,7 +32,7 @@ class FirstClaimGreedy:  # Task selection within each agent's `situation_awarene
         if len(local_tasks_info) == 0:
             self.assigned_task = None
             self.message_to_share = {
-                "agent_id": self.agent.agent_id,
+                "agent_id": self.agent_id,
                 "assigned_task_id": None,
             }
             return None
@@ -50,7 +51,7 @@ class FirstClaimGreedy:  # Task selection within each agent's `situation_awarene
             if len(unassigned_tasks_info) == 0:
                 self.assigned_task = None
                 self.message_to_share = {
-                    "agent_id": self.agent.agent_id,
+                    "agent_id": self.agent_id,
                     "assigned_task_id": None,
                 }
                 return None
@@ -67,7 +68,7 @@ class FirstClaimGreedy:  # Task selection within each agent's `situation_awarene
             self.assigned_task = self.agent.tasks_info[target_task_id]
 
             self.message_to_share = {
-                "agent_id": self.agent.agent_id,
+                "agent_id": self.agent_id,
                 "assigned_task_id": self.assigned_task.task_id,
             }
 

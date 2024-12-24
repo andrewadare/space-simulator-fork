@@ -31,6 +31,7 @@ class CBBAConfig(BaseModel):
 
 class CBBA:
     def __init__(self, agent, config: CBBAConfig):
+        self.agent_id = agent.agent_id
         self.agent = agent
         self.conf = config
 
@@ -43,7 +44,7 @@ class CBBA:
         self.phase = Phase.BUILD_BUNDLE
 
         self.message_to_share = {  # Message Initialization
-            "agent_id": self.agent.agent_id,
+            "agent_id": self.agent_id,
             "winning_agents": self.z,
             "winning_bids": self.y,
             "message_received_time_stamp": self.s,
@@ -94,7 +95,7 @@ class CBBA:
             self.build_bundle(local_tasks_info)
             # Broadcasting
             self.message_to_share = {
-                "agent_id": self.agent.agent_id,
+                "agent_id": self.agent_id,
                 "winning_agents": copy.deepcopy(self.z),
                 "winning_bids": copy.deepcopy(self.y),
                 "message_received_time_stamp": copy.deepcopy(self.s),
@@ -111,7 +112,7 @@ class CBBA:
             for task in local_tasks_info:
                 for other_agent_message in self.agent.messages_received:
                     k_agent_id = other_agent_message.get("agent_id")
-                    if k_agent_id == self.agent.agent_id:
+                    if k_agent_id == self.agent_id:
                         continue
                     z_k = other_agent_message.get("winning_agents")
                     y_k = other_agent_message.get("winning_bids")
@@ -131,7 +132,7 @@ class CBBA:
                     try:
                         if z_k[j] == k_agent_id:
                             # Rule 1
-                            if z_i[j] == self.agent.agent_id:
+                            if z_i[j] == self.agent_id:
                                 if y_k[j] > y_i[j]:
                                     self._update(j, y_k, z_k)
                             # Rule 2
@@ -149,9 +150,9 @@ class CBBA:
                                 except Exception as e:
                                     pass
 
-                        elif z_k[j] == self.agent.agent_id:
+                        elif z_k[j] == self.agent_id:
                             # Rule 5
-                            if z_i[j] == self.agent.agent_id:
+                            if z_i[j] == self.agent_id:
                                 self._leave()
                             # Rule 6
                             elif z_i[j] == k_agent_id:
@@ -170,7 +171,7 @@ class CBBA:
 
                         elif z_k[j] == None:
                             # Rule 14
-                            if z_i[j] == self.agent.agent_id:
+                            if z_i[j] == self.agent_id:
                                 self._leave()
                             # Rule 15
                             elif z_i[j] == k_agent_id:
@@ -187,7 +188,7 @@ class CBBA:
                         else:
                             m = z_k[j]
                             # Rule 9
-                            if z_i[j] == self.agent.agent_id:
+                            if z_i[j] == self.agent_id:
                                 if s_k.get(m) > s_i.get(m) and y_k[j] > y_i[j]:
                                     self._update(j, y_k, z_k)
                             # Rule 10
@@ -279,7 +280,7 @@ class CBBA:
     def update_bundle_and_path(self):
         _n_bar = len(self.bundle)
         for idx, task_id in enumerate(self.bundle):
-            if self.z[task_id] != self.agent.agent_id:
+            if self.z[task_id] != self.agent_id:
                 _n_bar = idx
                 break
 
@@ -320,7 +321,7 @@ class CBBA:
             # Line 13
             self.y[task_to_add.task_id] = my_bid_list[task_to_add.task_id]
             # LIne 14
-            self.z[task_to_add.task_id] = self.agent.agent_id
+            self.z[task_to_add.task_id] = self.agent_id
 
     def update_time_stamp(self):
         """
