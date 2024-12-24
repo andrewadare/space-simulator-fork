@@ -60,16 +60,16 @@ def draw_agent(agent, screen):
 
     # Calculate the triangle points based on the current position and angle
     p1 = pygame.Vector2(
-        agent.position.x + size * math.cos(angle),
-        agent.position.y + size * math.sin(angle),
+        agent.position[0] + size * math.cos(angle),
+        agent.position[1] + size * math.sin(angle),
     )
     p2 = pygame.Vector2(
-        agent.position.x + size * math.cos(angle + 2.5),
-        agent.position.y + size * math.sin(angle + 2.5),
+        agent.position[0] + size * math.cos(angle + 2.5),
+        agent.position[1] + size * math.sin(angle + 2.5),
     )
     p3 = pygame.Vector2(
-        agent.position.x + size * math.cos(angle - 2.5),
-        agent.position.y + size * math.sin(angle - 2.5),
+        agent.position[0] + size * math.cos(angle - 2.5),
+        agent.position[1] + size * math.sin(angle - 2.5),
     )
 
     agent.color = TASK_COLORS.get(agent.assigned_task_id, (20, 20, 20))
@@ -78,9 +78,10 @@ def draw_agent(agent, screen):
 
 
 def draw_tail(agent, screen):
-    # Draw track
-    if len(agent.memory_location) >= 2:
-        pygame.draw.lines(screen, agent.color, False, agent.memory_location, 1)
+    if len(agent.tail) >= 2:
+        tail = [pygame.Vector2(int(x), int(y)) for (x, y) in agent.tail]
+        # print(tail)
+        pygame.draw.lines(screen, agent.color, False, tail, 1)
 
 
 def draw_communication_topology(agent, screen, agents):
@@ -91,8 +92,8 @@ def draw_communication_topology(agent, screen, agents):
             pygame.draw.line(
                 screen,
                 (200, 200, 200),
-                (int(agent.position.x), int(agent.position.y)),
-                (int(neighbor_position.x), int(neighbor_position.y)),
+                (int(agent.position[0]), int(agent.position[1])),
+                (int(neighbor_position[0]), int(neighbor_position[1])),
             )
 
 
@@ -162,8 +163,8 @@ def draw_path_to_assigned_tasks(agent, screen):
             screen,
             # (255, 0, 0),  # Color for the path line (Red)
             color_list[agent.agent_id % len(color_list)],
-            (int(start_pos.x), int(start_pos.y)),
-            (int(task_position.x), int(task_position.y)),
+            (int(start_pos[0]), int(start_pos[1])),
+            (int(task_position[0]), int(task_position[1])),
             line_thickness,  # Thickness of the line
         )
         # Update the start position for the next segment

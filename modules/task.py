@@ -1,4 +1,4 @@
-import pygame
+import numpy as np
 
 
 class Task:
@@ -6,7 +6,7 @@ class Task:
         self, task_id: int, position: tuple[int, int], radius: float, amount: float
     ):
         self.task_id = task_id
-        self.position = pygame.Vector2(position)
+        self.position = np.array(position)
         self.radius = radius
         self.amount = amount
         self.completed = False

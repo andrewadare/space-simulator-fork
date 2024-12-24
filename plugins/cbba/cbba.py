@@ -1,11 +1,9 @@
-import pygame
-
 from enum import Enum
 import numpy as np
 import copy
 import time
 
-
+import numpy as np
 from pydantic import (
     BaseModel,
     Field,
@@ -16,18 +14,6 @@ from pydantic import (
 
 
 from modules.utils import merge_dicts
-
-# KEEP_MOVING_DURING_CONVERGENCE = config["decision_making"]["CBBA"].get(
-#     "execute_movements_during_convergence", False
-# )
-# MAX_TASKS_PER_AGENT = config["decision_making"]["CBBA"]["max_tasks_per_agent"]
-# LAMBDA = config["decision_making"]["CBBA"]["task_reward_discount_factor"]
-# WINNING_BID_CANCEL = config["decision_making"]["CBBA"]["winning_bid_cancel"]
-# NO_BUNDLE_DURATION = config["decision_making"]["CBBA"][
-#     "acceptable_empty_bundle_duration"
-# ]
-# SAMPLE_FREQ = config["simulation"]["sampling_freq"]
-# SAMPLE_TIME = 1.0 / SAMPLE_FREQ  # in seconds
 
 
 class Phase(Enum):
@@ -431,9 +417,10 @@ class CBBA:
         expected_reward_from_task = 0
         distance_to_next_task_from_start = 0
         for task in path:
-            next_position = pygame.Vector2(task.position)
-            distance_to_next_task_from_start += current_position.distance_to(
-                next_position
+            next_position = task.position
+
+            distance_to_next_task_from_start += np.linalg.norm(
+                next_position - current_position
             )
             # Time-discounted reward
             expected_reward_from_task += (

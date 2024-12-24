@@ -1,7 +1,7 @@
 import random
-from math import floor, ceil
 
-from modules.configuration_models import SpaceConfig, AgentConfig
+
+from modules.configuration_models import SpaceConfig
 from modules.task import Task
 from modules.agent import Agent
 
@@ -10,8 +10,8 @@ def generate_positions(quantity, x_min, x_max, y_min, y_max, radius=10):
     positions = []
     while len(positions) < quantity:
         pos = (
-            random.randint(ceil(x_min + radius), floor(x_max - radius)),
-            random.randint(ceil(y_min + radius), floor(y_max - radius)),
+            random.uniform((x_min + radius), (x_max - radius)),
+            random.uniform((y_min + radius), (y_max - radius)),
         )
         if radius > 0:
             if all(

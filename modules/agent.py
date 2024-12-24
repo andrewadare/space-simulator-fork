@@ -1,31 +1,30 @@
-import pygame
+import numpy as np
 import math
 import random
 import importlib
 from pathlib import Path
+from collections import deque
 
 from modules.behavior_tree import create_behavior_tree, Status, Node, ReturnsStatus
 from modules.configuration_models import SpaceConfig
 from modules.task import Task
 
-agent_track_size = 400  # TODO
 
-
-def get_random_position(x_min, x_max, y_min, y_max):
-    return (random.randint(x_min, x_max), random.randint(y_min, y_max))
+def get_random_position(x_min, x_max, y_min, y_max) -> tuple[int, int]:
+    return (random.uniform(x_min, x_max), random.uniform(y_min, y_max))
 
 
 class Agent:
     def __init__(self, agent_id, position, tasks_info, conf: SpaceConfig):
         self.agent_id = agent_id
-        self.position = pygame.Vector2(position)
-        self.velocity = pygame.Vector2(0, 0)
-        self.acceleration = pygame.Vector2(0, 0)
+        self.position = np.array(position)
+        self.velocity = np.zeros(2)
+        self.acceleration = np.zeros(2)
         self.max_speed = conf.agents.max_speed
         self.max_accel = conf.agents.max_accel
         self.max_angular_speed = conf.agents.max_angular_speed
         self.work_rate = conf.agents.work_rate
-        self.memory_location = []  # TODO: rename to tail; use deque
+        self.tail = deque(maxlen=conf.simulation.agent_track_size)
         self.rotation = 0  # Initial rotation
         self.color = (0, 0, 255)  # Blue color
         self.blackboard = {}
@@ -64,7 +63,7 @@ class Agent:
     def sense(self) -> Status:
         """Find waypoints and other agents in this agent's vicinity."""
         self.blackboard["local_tasks_info"] = self.get_tasks_nearby(
-            with_completed_task=False
+            incomplete_only=True
         )
         self.blackboard["local_agents_info"] = self.local_message_receive()
         self.blackboard["LocalSensingNode"] = Status.SUCCESS
@@ -88,7 +87,7 @@ class Agent:
 
             # Check if agent reached the task position
             if (
-                self.position.distance_to(goal.position)
+                np.linalg.norm(goal.position - self.position)
                 < goal.radius + self.task_threshold
             ):
                 if goal.completed:
@@ -132,45 +131,33 @@ class Agent:
         }
         return await self.tree.run()
 
-    def follow(self, target):
-        # Calculate desired velocity
-        desired = target - self.position
-        d = desired.length()
+    def follow(self, target: np.ndarray):
+        """TODO: rename to update_acceleration? No following here."""
+        offset = target - self.position
+        distance = np.linalg.norm(offset)
+        direction = offset / distance
+        speed = self.max_speed
+        if distance < self.target_approach_radius:
+            speed *= distance / self.target_approach_radius
 
-        if d < self.target_approach_radius:
+        self.acceleration = self.limit(
+            self.acceleration + speed * direction - self.velocity, self.max_accel
+        )
 
-            # Apply arrival behavior
-            desired.normalize_ip()
-
-            # Adjust speed based on distance
-            desired *= self.max_speed * (d / self.target_approach_radius)
-        else:
-            desired.normalize_ip()
-            desired *= self.max_speed
-
-        steer = desired - self.velocity
-        steer = self.limit(steer, self.max_accel)
-        self.applyForce(steer)
-
-    def applyForce(self, force):
-        self.acceleration += force
-
-    def update(self, sampling_time: float):
+    def update(self, timestep: float):
         # Update velocity and position
-        self.velocity += self.acceleration * sampling_time
+        self.velocity += self.acceleration * timestep
         self.velocity = self.limit(self.velocity, self.max_speed)
-        self.position += self.velocity * sampling_time
+        self.position += self.velocity * timestep
         self.acceleration *= 0  # Reset acceleration
 
         # Calculate the distance moved in this update and add to distance_moved
-        self.distance_moved += self.velocity.length() * sampling_time
-        # Memory of positions to draw track
-        self.memory_location.append((self.position.x, self.position.y))
-        if len(self.memory_location) > agent_track_size:
-            self.memory_location.pop(0)
+        self.distance_moved += np.linalg.norm(self.velocity) * timestep
+
+        self.tail.append([*self.position])
 
         # Update rotation
-        desired_rotation = math.atan2(self.velocity.y, self.velocity.x)
+        desired_rotation = math.atan2(self.velocity[1], self.velocity[0])
         rotation_diff = desired_rotation - self.rotation
         while rotation_diff > math.pi:
             rotation_diff -= 2 * math.pi
@@ -181,15 +168,16 @@ class Agent:
         if abs(rotation_diff) > self.max_angular_speed:
             rotation_diff = math.copysign(self.max_angular_speed, rotation_diff)
 
-        self.rotation += rotation_diff * sampling_time
+        self.rotation += rotation_diff * timestep
 
     def reset_movement(self):
-        self.velocity = pygame.Vector2(0, 0)
-        self.acceleration = pygame.Vector2(0, 0)
+        self.velocity *= 0
+        self.acceleration *= 0
 
-    def limit(self, vector, max_value):
-        if vector.length_squared() > max_value**2:
-            vector.scale_to_length(max_value)
+    def limit(self, vector: np.ndarray, max_value: float):
+        mag = np.linalg.norm(vector)
+        if mag > max_value:
+            vector *= max_value / mag
         return vector
 
     def local_message_receive(self):
@@ -213,51 +201,33 @@ class Agent:
     def set_planned_tasks(self, task_list):  # This is for visualisation
         self.planned_tasks = task_list
 
-    def get_agents_nearby(self, radius=None):
-        _communication_radius = self.communication_radius if radius is None else radius
-        if _communication_radius > 0:
-            communication_radius_squared = _communication_radius**2
-            local_agents_info = [
-                other_agent
-                for other_agent in self.all_agents
-                if (self.position - other_agent.position).length_squared()
-                <= communication_radius_squared
-                and other_agent.agent_id != self.agent_id
-            ]
-        else:
-            local_agents_info = self.all_agents
-        return local_agents_info
+    def get_agents_nearby(self):
+        r2 = self.communication_radius**2
+        nearby_agents: list[Agent] = []
+        for agent in self.all_agents:
+            if agent.agent_id == self.agent_id:
+                continue
+            d = agent.position - self.position
+            if d @ d <= r2:
+                nearby_agents.append(agent)
 
-    def get_tasks_nearby(self, radius=None, with_completed_task=True):
-        _situation_awareness_radius = (
-            self.situation_awareness_radius if radius is None else radius
-        )
-        if _situation_awareness_radius > 0:
-            situation_awareness_radius_squared = _situation_awareness_radius**2
-            if with_completed_task:  # Default
-                local_tasks_info = [
-                    task
-                    for task in self.tasks_info
-                    if (self.position - task.position).length_squared()
-                    <= situation_awareness_radius_squared
-                ]
-            else:
-                local_tasks_info = [
-                    task
-                    for task in self.tasks_info
-                    if not task.completed
-                    and (self.position - task.position).length_squared()
-                    <= situation_awareness_radius_squared
-                ]
-        else:
-            if with_completed_task:  # Default
-                local_tasks_info = self.tasks_info
-            else:
-                local_tasks_info = [
-                    task for task in self.tasks_info if not task.completed
-                ]
+        return nearby_agents
 
-        return local_tasks_info
+    def get_tasks_nearby(self, incomplete_only=False):
+
+        if incomplete_only:
+            tasks = [t for t in self.tasks_info if not t.completed]
+        else:
+            tasks = self.tasks_info
+
+        r2 = self.situation_awareness_radius**2
+        nearby_tasks: list[Task] = []
+        for task in tasks:
+            d = task.position - self.position
+            if d @ d <= r2:
+                nearby_tasks.append(task)
+
+        return nearby_tasks
 
     def update_task_amount_done(self, amount):
         self.task_amount_done += amount
