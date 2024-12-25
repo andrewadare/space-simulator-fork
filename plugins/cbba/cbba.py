@@ -15,6 +15,7 @@ from pydantic import (
 
 from modules.utils import merge_dicts
 from modules.agent import Agent
+from modules.task import Task
 from modules.configuration_models import AgentConfig
 
 
@@ -95,7 +96,7 @@ class CBBA:
         # Look for a task within situation awareness radius if there is no existing assigned task
         if self.phase == Phase.BUILD_BUNDLE:
             # Phase 1 Build Bundle
-            self.build_bundle(local_tasks_info)
+            self.build_bundle(local_tasks_info, agent_position)
             # Broadcasting
             self.message_to_share = {
                 "agent_id": self.agent_id,
@@ -265,7 +266,6 @@ class CBBA:
             )
         else:
             # Neutralise the agent's current movement during converging to a consensus
-            # self.agent.reset_movement()  # TODO remove. Set a flag if needed
             blackboard["stop_moving"] = True
             return None
 
@@ -292,7 +292,7 @@ class CBBA:
 
         return _bundle, _path
 
-    def build_bundle(self, local_tasks_info):
+    def build_bundle(self, local_tasks_info, agent_position):
         """
         Construct bundle and path list with local information.
         Algorithm 3 in CBBA paper
@@ -305,7 +305,7 @@ class CBBA:
 
             # Line 7
             my_bid_list, best_insertion_idx_list = self.get_my_bid_value_list(
-                local_tasks_info
+                local_tasks_info, agent_position
             )
 
             # Line 8~9
@@ -347,9 +347,9 @@ class CBBA:
         # Finally merge
         self.s = merge_dicts(self.s, max_timestamp)
 
-    def get_my_bid_value_list(self, local_tasks_info):
+    def get_my_bid_value_list(self, local_tasks_info, agent_position: np.ndarray):
         # Calculate S_p for the constructed path list
-        S_p = self.calculate_score_along_path(self.agent.position, self.path)
+        S_p = self.calculate_score_along_path(agent_position, self.path)
 
         # My new bid list (key: task_id; value: bid value),
         # denoted by 'c' in the paper (Algorithm 3 Line 3)
@@ -364,7 +364,7 @@ class CBBA:
             for idx in range(len(self.path) + 1):
                 _alternative_path = self.get_alternative_path(self.path, task, idx)
                 S_p_plus_j_at_idx = self.calculate_score_along_path(
-                    self.agent.position, _alternative_path
+                    agent_position, _alternative_path
                 )
                 _marginal_score_by_new_task.append(S_p_plus_j_at_idx - S_p)
 
@@ -415,7 +415,7 @@ class CBBA:
             else None
         )
 
-    def calculate_score_along_path(self, agent_position, path):
+    def calculate_score_along_path(self, agent_position: np.ndarray, path: list[Task]):
         """
         Compute S^{p_i} in Eqn (11) in the CBBA paper
         """
@@ -433,8 +433,8 @@ class CBBA:
             expected_reward_from_task += (
                 self.conf.task_reward_discount_factor
                 ** (
-                    distance_to_next_task_from_start / self.agent.params.max_speed
-                    + task.amount / self.agent.params.work_rate
+                    distance_to_next_task_from_start / self.agent_config.max_speed
+                    + task.amount / self.agent_config.work_rate
                 )
                 * task.amount
             )
