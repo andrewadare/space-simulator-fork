@@ -1,13 +1,52 @@
 import random
 import importlib
+from pathlib import Path
+import xml.etree.ElementTree as ET
 
 
-from modules.configuration_models import SpaceConfig
+from modules.configuration_models import SpaceConfig, AgentConfig, OperatingArea
 from modules.task import Task
 from modules.agent import Agent
+from modules.behavior_tree import (
+    ReturnsStatus,
+    Node,
+    SequenceNode,
+    FallbackNode,
+    SyncActionNode,
+)
 
 
-"""TODO rename this file to factories.py (?)"""
+def create_behavior_tree(
+    xml_file: Path,
+    action_callbacks: dict[str, ReturnsStatus],
+    root_tag: str = "BehaviorTree",
+) -> Node:
+    """Creates a behavior tree from an XML file as a set of linked Node objects."""
+    element_tree: ET.ElementTree = ET.parse(xml_file)
+    xml_root: ET.Element = element_tree.getroot()
+    return create_node(xml_root.find(root_tag), action_callbacks, root_tag)
+
+
+def create_node(
+    xml_node: ET.Element, action_callbacks: dict[str, ReturnsStatus], root_tag: str
+) -> Node:
+    """Recursively creates Nodes from XML Elements."""
+    name = xml_node.tag
+    children = []
+
+    for child in xml_node:
+        children.append(create_node(child, action_callbacks, root_tag))
+
+    if name in ["SequenceNode", "Sequence"]:
+        return SequenceNode(name, children=children)
+    elif name in ["FallbackNode", "Fallback"]:
+        return FallbackNode(name, children=children)
+    elif name in action_callbacks:
+        return SyncActionNode(name, action_callbacks[name])
+    elif name == root_tag:
+        return children[0]
+    else:
+        raise ValueError(f"Unknown behavior node type: {name}")
 
 
 def generate_positions(quantity, x_min, x_max, y_min, y_max, radius=10):
@@ -50,7 +89,9 @@ def generate_tasks(
     return tasks
 
 
-def generate_agents(tasks: list[Task], config: SpaceConfig, strategy: str):
+def generate_agents(
+    tasks: list[Task], config: SpaceConfig, strategy: str
+) -> list[Agent]:
 
     positions = generate_positions(
         config.agents.quantity,
@@ -60,17 +101,24 @@ def generate_agents(tasks: list[Task], config: SpaceConfig, strategy: str):
         config.agents.locations.y_max,
         radius=config.agents.locations.non_overlap_radius,
     )
+    bounds: OperatingArea = config.tasks.locations
+    params: AgentConfig = config.agents
 
-    bounds = config.tasks.locations
-
-    params = config.agents
-    agents = [Agent(i, pos, tasks, bounds, params) for i, pos in enumerate(positions)]
-
-    for agent in agents:
-        agent.all_agents = agents  # TODO see README
+    agents = []
+    for id, position in enumerate(positions):
+        agent = Agent(id, position, tasks, bounds, params)
         agent.task_assigner = create_task_decider(
             agent, config.decision_making, strategy
         )
+        agent.tree = create_behavior_tree(
+            Path("bt_xml") / params.behavior_tree_xml, agent.node_callbacks
+        )
+        agents.append(agent)
+
+    # TODO Does every agent really need this?
+    # Providing access to every agent at any time seems a bit unrealistic.
+    for agent in agents:
+        agent.all_agents = agents
 
     return agents
 

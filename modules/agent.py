@@ -1,15 +1,14 @@
 import numpy as np
 import math
 import random
-from pathlib import Path
 from collections import deque
 
-from modules.behavior_tree import create_behavior_tree, Status, Node, ReturnsStatus
+from modules.behavior_tree import Status, ReturnsStatus
 from modules.configuration_models import AgentConfig, OperatingArea
 from modules.task import Task
 
 
-def get_random_point(bounds: OperatingArea) -> tuple[float, float]:
+def create_random_point(bounds: OperatingArea) -> tuple[float, float]:
     x = random.uniform(bounds.x_min, bounds.x_max)
     y = random.uniform(bounds.y_min, bounds.y_max)
     return (x, y)
@@ -53,9 +52,12 @@ class Agent:
             TaskExecutingNode=self.goto_task,
             ExplorationNode=self.explore,
         )
-        self.tree: Node = create_behavior_tree(
-            Path("bt_xml") / conf.behavior_tree_xml, self.node_callbacks
-        )
+
+        self.tree = None
+
+        # self.tree: Node = create_behavior_tree(
+        #     Path("bt_xml") / conf.behavior_tree_xml, self.node_callbacks
+        # )
 
         # For self.explore callback
         self.exploration_time = 0.0
@@ -122,7 +124,7 @@ class Agent:
     def explore(self) -> Status:
         """Look busy by moving to a random imaginary waypoint."""
         if self.exploration_time > self.params.random_exploration_duration:
-            self.random_waypoint = get_random_point(self.bounds)
+            self.random_waypoint = create_random_point(self.bounds)
             self.exploration_time = 0
 
         self.blackboard["random_waypoint"] = self.random_waypoint
@@ -187,9 +189,6 @@ class Agent:
         if mag > max_value:
             vector *= max_value / mag
         return vector
-
-    # def reset_messages_received(self):
-    #     self.blackboard["messages_received"] = []
 
     def set_assigned_task_id(self, task_id):
         self.assigned_task_id = task_id
