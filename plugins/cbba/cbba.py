@@ -56,7 +56,7 @@ class CBBA:
         self.assigned_task = None
         self.no_bundle_duration = 0
 
-    def decide(self, blackboard: dict, sample_time: float):
+    def decide(self, blackboard: dict, agent_position: np.ndarray):
         """
         Output:
             - `task_id`, if task allocation works well
@@ -83,7 +83,7 @@ class CBBA:
         # but the agent cannot choose any of them for a certain period
         if self.conf.winning_bid_cancel:
             if len(self.bundle) == 0:
-                self.no_bundle_duration += sample_time
+                self.no_bundle_duration += self.agent_config.timestep
 
             if self.no_bundle_duration > self.conf.acceptable_empty_bundle_duration:
                 # Neutralize
@@ -265,7 +265,8 @@ class CBBA:
             )
         else:
             # Neutralise the agent's current movement during converging to a consensus
-            self.agent.reset_movement()  # TODO remove. Set a flag if needed
+            # self.agent.reset_movement()  # TODO remove. Set a flag if needed
+            blackboard["stop_moving"] = True
             return None
 
     def _update(self, task_id, y_k, z_k):

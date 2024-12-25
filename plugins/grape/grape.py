@@ -83,7 +83,7 @@ class GRAPE:
         ]
         return _neighbor_agents_info
 
-    def decide(self, blackboard: dict, sample_time: float):
+    def decide(self, blackboard: dict, agent_position: np.ndarray):
         """
         Output:
             - `task_id`, if task allocation works well
@@ -149,7 +149,9 @@ class GRAPE:
 
         if not self.satisfied:
             if not self.config.execute_movements_during_convergence:
-                self.agent.reset_movement()  # Neutralise the agent's current movement during converging to a Nash stable partition
+                # Neutralise the agent's current movement during converging to a Nash stable partition
+                # self.agent.reset_movement()
+                blackboard["stop_moving"] = True
 
         return (
             copy.deepcopy(self.assigned_task.task_id)

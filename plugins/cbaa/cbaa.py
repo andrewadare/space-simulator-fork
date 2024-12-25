@@ -26,8 +26,7 @@ class CBAA:
         self.x = {}  # task assignment (key: task id; value: 0 or 1)
         self.y = {}  # winning bid list (key: task id; value: bid value)
 
-    def decide(self, blackboard, timestep):
-        # Place your decision-making code for each agent
+    def decide(self, blackboard: dict, agent_position: np.ndarray):
         """
         Output:
             - `task_id`, if task allocation works well

@@ -43,6 +43,7 @@ class Agent:
             messages_received=[],
             # For visualization. Not used by all strategies.
             planned_tasks=[],
+            stop_moving=False,
         )
 
         # Agent behaviors for self.tree
@@ -75,9 +76,18 @@ class Agent:
 
     def decide_task(self) -> Status:
         """Decide which waypoint to visit."""
+
+        # Some algorithms set a flag to stop the agent during convergence.
+        # Reset before deciding.
+        self.blackboard["stop_moving"] = False
+
         self.assigned_task_id = self.task_assigner.decide(
-            self.blackboard, self.params.timestep
+            self.blackboard, self.position
         )
+
+        if self.blackboard["stop_moving"]:
+            self.velocity *= 0
+            self.acceleration *= 0
 
         # "Publish" decision making info
         self.message_to_share = self.task_assigner.message_to_share
@@ -157,10 +167,6 @@ class Agent:
             rotation_diff = math.copysign(self.params.max_angular_speed, rotation_diff)
 
         self.rotation += rotation_diff * timestep
-
-    def reset_movement(self):
-        self.velocity *= 0
-        self.acceleration *= 0
 
     def limit(self, vector: np.ndarray, max_value: float):
         mag = np.linalg.norm(vector)

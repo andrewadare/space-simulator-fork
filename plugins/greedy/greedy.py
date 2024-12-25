@@ -28,8 +28,7 @@ class FirstClaimGreedy:
         self.agent_config = agent_config
         self.assigned_task = None
 
-    def decide(self, blackboard, timestep):
-        # Place your decision-making code for each agent
+    def decide(self, blackboard: dict, agent_position: np.ndarray):
         """
         Output:
             - `task_id`, if task allocation works well
