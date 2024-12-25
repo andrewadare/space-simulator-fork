@@ -35,7 +35,6 @@ class CBBAConfig(BaseModel):
 class CBBA:
     def __init__(self, agent, config: CBBAConfig, agent_config: AgentConfig):
         self.agent_id = agent.agent_id
-        self.agent = agent
         self.conf = config
         self.agent_config = agent_config
 
@@ -292,7 +291,7 @@ class CBBA:
 
         return _bundle, _path
 
-    def build_bundle(self, local_tasks_info, agent_position):
+    def build_bundle(self, local_tasks_info: list[Task], agent_position: np.ndarray):
         """
         Construct bundle and path list with local information.
         Algorithm 3 in CBBA paper
@@ -309,7 +308,7 @@ class CBBA:
             )
 
             # Line 8~9
-            task_to_add = self.get_best_task(my_bid_list)
+            task_to_add = self.get_best_task(my_bid_list, local_tasks_info)
 
             if task_to_add is None:
                 break
@@ -392,7 +391,7 @@ class CBBA:
         except IndexError as e:
             print(f"Error: {e}")
 
-    def get_best_task(self, my_bid_list):
+    def get_best_task(self, my_bid_list, tasks: list[Task]) -> Task | None:
         """
         [Output] task object
         """
@@ -409,11 +408,11 @@ class CBBA:
         best_task_id = max(my_bid_list, key=my_bid_list.get)
         best_task_score = my_bid_list[best_task_id]
 
-        return (
-            self.agent.tasks_info[best_task_id]
-            if best_task_score > float("-inf")
-            else None
-        )
+        if best_task_score > float("-inf"):
+            for task in tasks:
+                if task.task_id == best_task_id:
+                    return task
+        return None
 
     def calculate_score_along_path(self, agent_position: np.ndarray, path: list[Task]):
         """
