@@ -58,6 +58,10 @@ class Agent:
             Path("bt_xml") / conf.behavior_tree_xml, self.node_callbacks
         )
 
+        # For self.explore callback
+        self.exploration_time = 0.0
+        self.random_waypoint = (0, 0)
+
     def sense(self) -> Status:
         """Find waypoints and other agents in this agent's vicinity."""
         self.blackboard["local_tasks_info"] = self.get_tasks_nearby(
@@ -106,18 +110,15 @@ class Agent:
         self.blackboard["TaskExecutingNode"] = Status.RUNNING
         return Status.RUNNING
 
-    def explore(self, _t=float("inf"), _waypoint=(0, 0)) -> Status:
-        """Look busy by moving to a random imaginary waypoint.
+    def explore(self) -> Status:
+        """Look busy by moving to a random imaginary waypoint."""
+        if self.exploration_time > self.params.random_exploration_duration:
+            self.random_waypoint = get_random_point(self.bounds)
+            self.exploration_time = 0
 
-        Keyword args are used only as static function variables - do not assign.
-        """
-        if _t > self.params.random_exploration_duration:
-            _waypoint = get_random_point(self.bounds)
-            _t = 0
-
-        self.blackboard["random_waypoint"] = _waypoint
-        _t += self.params.timestep
-        self.follow(_waypoint)
+        self.blackboard["random_waypoint"] = self.random_waypoint
+        self.exploration_time += self.params.timestep
+        self.follow(self.random_waypoint)
         self.blackboard["ExplorationNode"] = Status.RUNNING
         return Status.RUNNING
 
