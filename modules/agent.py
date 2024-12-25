@@ -71,26 +71,21 @@ class Agent:
                 self.blackboard["messages_received"].append(
                     other_agent.message_to_share
                 )
-
-        self.blackboard["LocalSensingNode"] = Status.SUCCESS
         return Status.SUCCESS
 
     def decide_task(self) -> Status:
         """Decide which waypoint to visit."""
-        assigned_task_id = self.task_assigner.decide(
+        self.assigned_task_id = self.task_assigner.decide(
             self.blackboard, self.params.timestep
         )
 
         # "Publish" decision making info
         self.message_to_share = self.task_assigner.message_to_share
 
-        status = Status.FAILURE if assigned_task_id is None else Status.SUCCESS
-        self.assigned_task_id = assigned_task_id
-        self.blackboard["DecisionMakingNode"] = status
-
-        # Clear inbox
+        # Clear inbox now that self.task_assigner is done reading agent's mail.
         self.blackboard["messages_received"] = []
 
+        status = Status.FAILURE if self.assigned_task_id is None else Status.SUCCESS
         return status
 
     def goto_task(self) -> Status:
@@ -105,16 +100,12 @@ class Agent:
             distance = np.linalg.norm(goal.position - self.position)
             if distance < goal.radius + self.params.radius:
                 if goal.completed:
-                    self.blackboard["TaskExecutingNode"] = Status.SUCCESS
                     return Status.SUCCESS
                 self.tasks_info[self.assigned_task_id].reduce_amount(
                     self.params.work_rate * self.params.timestep
                 )
                 self.task_amount_done += self.params.work_rate
-
             self.follow(goal.position)
-
-        self.blackboard["TaskExecutingNode"] = Status.RUNNING
         return Status.RUNNING
 
     def explore(self) -> Status:
@@ -122,19 +113,11 @@ class Agent:
         if self.exploration_time > self.params.random_exploration_duration:
             self.random_waypoint = create_random_point(self.bounds)
             self.exploration_time = 0
-
-        self.blackboard["random_waypoint"] = self.random_waypoint  # TODO Needed?
         self.exploration_time += self.params.timestep
         self.follow(self.random_waypoint)
-        self.blackboard["ExplorationNode"] = Status.RUNNING
         return Status.RUNNING
 
     async def run_tree(self):
-        # Reset action node statuses
-        self.blackboard = {
-            key: None if key in self.node_callbacks else value
-            for key, value in self.blackboard.items()
-        }
         return await self.tree.run()
 
     def follow(self, target: np.ndarray):
