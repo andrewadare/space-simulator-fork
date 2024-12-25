@@ -32,12 +32,11 @@ class Agent:
         self.bounds = bounds
         self.params = conf
         self.tail = deque(maxlen=400)
-        self.blackboard = {}
+        self.blackboard = {"messages_received": []}
         self.tasks_info: list[Task] = tasks  # TODO see README
         self.all_agents: list[Agent] = []  # TODO see README
         self.agents_nearby: list[Agent] = []
         self.message_to_share = {}
-        self.messages_received = []
         self.assigned_task_id = None  # Local decision-making result.
         self.planned_tasks = []  # Local decision-making result.
         self.distance_moved = 0.0
@@ -189,10 +188,10 @@ class Agent:
         return self.agents_nearby
 
     def reset_messages_received(self):
-        self.messages_received = []
+        self.blackboard["messages_received"] = []
 
     def receive_message(self, message):
-        self.messages_received.append(message)
+        self.blackboard["messages_received"].append(message)
 
     def set_assigned_task_id(self, task_id):
         self.assigned_task_id = task_id

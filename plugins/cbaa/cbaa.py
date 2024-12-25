@@ -80,7 +80,7 @@ class CBAA:
             winner_agent_candidates = {
                 self.agent_id: self.y[best_task_id]
             }  # Initialization with myself
-            for other_agent_message in self.agent.messages_received:
+            for other_agent_message in blackboard["messages_received"]:
                 if other_agent_message:
                     y_k = other_agent_message.get("winning_bids")
                     self.y = merge_dicts(self.y, y_k)  # Line 4: Winning Bid Update

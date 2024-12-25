@@ -130,7 +130,7 @@ class GRAPE:
 
         # D-Mutex (Phase 2)
         self.evolution_number, self.time_stamp, self.partition, self.satisfied = (
-            self.distributed_mutex(self.agent.messages_received)
+            self.distributed_mutex(blackboard["messages_received"])
         )
         self.agent.reset_messages_received()
 

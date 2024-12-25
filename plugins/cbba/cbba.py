@@ -107,10 +107,10 @@ class CBBA:
             return None
 
         if self.phase == Phase.ASSIGNMENT_CONSENSUS:
-            self.update_time_stamp()
+            self.update_time_stamp(blackboard["messages_received"])
             # Phase 2 Consensus
             for task in local_tasks_info:
-                for other_agent_message in self.agent.messages_received:
+                for other_agent_message in blackboard["messages_received"]:
                     k_agent_id = other_agent_message.get("agent_id")
                     if k_agent_id == self.agent_id:
                         continue
@@ -323,7 +323,7 @@ class CBBA:
             # LIne 14
             self.z[task_to_add.task_id] = self.agent_id
 
-    def update_time_stamp(self):
+    def update_time_stamp(self, messages_received: list[dict]):
         """
         Eqn (5)
         """
@@ -335,7 +335,7 @@ class CBBA:
 
         # For two-hop neighbor agents
         max_timestamp = {}
-        for other_agent_message in self.agent.messages_received:
+        for other_agent_message in messages_received:
             time_stamp = other_agent_message.get("message_received_time_stamp")
             if time_stamp:
                 max_timestamp = merge_dicts(max_timestamp, time_stamp)

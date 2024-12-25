@@ -45,7 +45,8 @@ class FirstClaimGreedy:  # Task selection within each agent's `situation_awarene
         # Look for a task within situation awareness radius if there is no existing assigned task
         if self.assigned_task is None:
             unassigned_tasks_info = self.filter_unassigned_tasks_from_neighbor_messages(
-                local_tasks_info
+                local_tasks_info,
+                blackboard["messages_received"],
             )
             self.agent.reset_messages_received()
             if len(unassigned_tasks_info) == 0:
@@ -74,9 +75,11 @@ class FirstClaimGreedy:  # Task selection within each agent's `situation_awarene
 
         return self.assigned_task.task_id
 
-    def filter_unassigned_tasks_from_neighbor_messages(self, tasks_info):
+    def filter_unassigned_tasks_from_neighbor_messages(
+        self, tasks_info, messages_received
+    ):
         occupied_tasks_id = []
-        for message in self.agent.messages_received:
+        for message in messages_received:
             occupied_tasks_id.append(message.get("assigned_task_id"))
 
         unassigned_tasks = [
