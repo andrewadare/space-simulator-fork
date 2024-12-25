@@ -85,8 +85,7 @@ class Agent:
         self.message_to_share = self.task_assigner.message_to_share
 
         status = Status.FAILURE if assigned_task_id is None else Status.SUCCESS
-        self.set_assigned_task_id(assigned_task_id)
-        self.blackboard["assigned_task_id"] = assigned_task_id
+        self.assigned_task_id = assigned_task_id
         self.blackboard["DecisionMakingNode"] = status
 
         # Clear inbox
@@ -96,10 +95,9 @@ class Agent:
 
     def goto_task(self) -> Status:
         """Go to assigned task position."""
-        assigned_task_id = self.blackboard.get("assigned_task_id")
 
-        if assigned_task_id is not None:
-            goal: Task = self.tasks_info[assigned_task_id]
+        if self.assigned_task_id is not None:
+            goal: Task = self.tasks_info[self.assigned_task_id]
 
             # Check if agent reached the task position.
             # NOTE: in original implementation, threshold_done_by_arrival
@@ -109,7 +107,7 @@ class Agent:
                 if goal.completed:
                     self.blackboard["TaskExecutingNode"] = Status.SUCCESS
                     return Status.SUCCESS
-                self.tasks_info[assigned_task_id].reduce_amount(
+                self.tasks_info[self.assigned_task_id].reduce_amount(
                     self.params.work_rate * self.params.timestep
                 )
                 self.task_amount_done += self.params.work_rate
@@ -125,7 +123,7 @@ class Agent:
             self.random_waypoint = create_random_point(self.bounds)
             self.exploration_time = 0
 
-        self.blackboard["random_waypoint"] = self.random_waypoint
+        self.blackboard["random_waypoint"] = self.random_waypoint  # TODO Needed?
         self.exploration_time += self.params.timestep
         self.follow(self.random_waypoint)
         self.blackboard["ExplorationNode"] = Status.RUNNING
