@@ -50,7 +50,7 @@ def generate_tasks(
     return tasks
 
 
-def generate_agents(tasks: list[Task], config: SpaceConfig):
+def generate_agents(tasks: list[Task], config: SpaceConfig, strategy: str):
 
     positions = generate_positions(
         config.agents.quantity,
@@ -68,19 +68,22 @@ def generate_agents(tasks: list[Task], config: SpaceConfig):
 
     for agent in agents:
         agent.all_agents = agents  # TODO see README
-        agent.task_assigner = create_task_decider(agent, config.decision_making)
+        agent.task_assigner = create_task_decider(
+            agent, config.decision_making, strategy
+        )
 
     return agents
 
 
-def create_task_decider(agent: Agent, config_dict: dict):
+def create_task_decider(agent: Agent, config_dict: dict, strategy: str):
     """Factory for creating an object used to guide agents in which task to pursue next.
     Types are loaded from a plugin module.
-
-    TODO: only CBBA is supported, need to convert global dicts to *Config classes for other types.
     """
-
-    module_path, class_name = config_dict["plugin"].rsplit(".", 1)
+    if strategy not in config_dict:
+        raise ValueError(
+            f"Unrecognized strategy {strategy}. Options: {list(config_dict.keys())}"
+        )
+    module_path, class_name = config_dict[strategy]["plugin"].rsplit(".", 1)
     module = importlib.import_module(module_path)
     cls = getattr(module, class_name)
     config_cls = getattr(module, class_name + "Config")

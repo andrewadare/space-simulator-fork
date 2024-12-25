@@ -1,30 +1,23 @@
-# decision_making: # Case 1
-#   plugin: plugins.grape.grape.GRAPE
-#   GRAPE:
-#     cost_weight_factor: 1.0
-#     social_inhibition_factor: 100
-#     initialize_partition: Distance # Options: None; Distance      
-#     reinitialize_partition_on_completion: Distance # Options: None; Distance; 
-
-# decision_making: # Case 2
-#   plugin: plugins.cbba.cbba.CBBA
-#   CBBA:  
-#     max_tasks_per_agent: 5 
-#     task_reward_discount_factor: 0.999 
-#     winning_bid_cancel: True
-#     acceptable_empty_bundle_duration: 500 # sec
-
-# decision_making: # Case 3
-#   plugin: plugins.greedy.greedy.FirstClaimGreedy
-#   FirstClaimGreedy:  
-#     mode: MinDist  # Options: Random; MinDist; MaxUtil
-#     weight_factor_cost: 10000.0 # Only used for `MaxUtil` mode
-#     enforced_collaboration: False  
-
-
-decision_making:
-  plugin: plugins.cbaa.cbaa.CBAA
+decision_making: 
+  GRAPE:
+    plugin: plugins.grape.grape.GRAPE
+    cost_weight_factor: 1.0
+    social_inhibition_factor: 100
+    initialize_partition: Distance # Options: None; Distance      
+    reinitialize_partition_on_completion: Distance # Options: None; Distance; 
+  CBBA:  
+    plugin: plugins.cbba.cbba.CBBA
+    max_tasks_per_agent: 5 
+    task_reward_discount_factor: 0.999 
+    winning_bid_cancel: True
+    acceptable_empty_bundle_duration: 500 # sec
+  FirstClaimGreedy:  
+    plugin: plugins.greedy.greedy.FirstClaimGreedy
+    mode: MinDist  # Options: Random; MinDist; MaxUtil
+    weight_factor_cost: 10000.0 # Only used for `MaxUtil` mode
+    enforced_collaboration: False  
   CBAA:
+    plugin: plugins.cbaa.cbaa.CBAA
     lambda_param: 0.999
 
 agents:

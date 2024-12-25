@@ -24,10 +24,17 @@ parser.add_argument(
     default="config.yaml",
     help="Path to the configuration file (default: --config=config.yaml)",
 )
+parser.add_argument(
+    "--strategy",
+    type=str,
+    choices=["CBAA", "CBBA", "GRAPE", "FirstClaimGreedy"],
+    default="CBBA",
+    help="Task allocation strategy",
+)
 
 
 # Main game loop
-async def game_loop(config: SpaceConfig):
+async def game_loop(config: SpaceConfig, strategy: str):
 
     sim_config: SimConfig = config.simulation
     task_gen: DynamicTaskGenerationConfig = config.tasks.dynamic_task_generation
@@ -40,7 +47,7 @@ async def game_loop(config: SpaceConfig):
 
     # Initialize agents with behavior trees, giving them the information of current tasks
     tasks = generate_tasks(config, config.tasks.quantity, 0)
-    agents = generate_agents(tasks, config)
+    agents = generate_agents(tasks, config, strategy)
 
     # Initialize pygame
     pygame.init()
@@ -196,8 +203,8 @@ async def game_loop(config: SpaceConfig):
     pygame.quit()
 
 
-def main(config: SpaceConfig):
-    asyncio.run(game_loop(config))
+def main(config: SpaceConfig, strategy: str):
+    asyncio.run(game_loop(config, strategy))
 
 
 # Run the game
@@ -209,6 +216,6 @@ if __name__ == "__main__":
         config = SpaceConfig(**config_dict)
 
     if config.simulation.profiling_mode:
-        cProfile.run("main(config)", sort="cumulative")
+        cProfile.run(f"main(config, {args.strategy})", sort="cumulative")
     else:
-        main(config)
+        main(config, args.strategy)
