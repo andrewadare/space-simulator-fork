@@ -183,16 +183,13 @@ class Agent:
         self.agents_nearby = self.get_agents_nearby()
         for other_agent in self.agents_nearby:
             if other_agent.agent_id != self.agent_id:
-                self.receive_message(other_agent.message_to_share)
-                # other_agent.receive_message(self.message_to_share)
-
+                self.blackboard["messages_received"].append(
+                    other_agent.message_to_share
+                )
         return self.agents_nearby
 
     def reset_messages_received(self):
         self.blackboard["messages_received"] = []
-
-    def receive_message(self, message):
-        self.blackboard["messages_received"].append(message)
 
     def set_assigned_task_id(self, task_id):
         self.assigned_task_id = task_id
