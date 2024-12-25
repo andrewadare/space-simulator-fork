@@ -10,6 +10,7 @@ from pydantic import (
 
 from modules.utils import pre_render_text
 from modules.agent import Agent
+from modules.task import Task
 from modules.configuration_models import AgentConfig
 
 
@@ -28,24 +29,11 @@ class GRAPE:
         self.satisfied = False
         self.evolution_number = 0
         self.time_stamp = 0
-        self.partition = {task.task_id: set() for task in self.agent.tasks_info}
         self.assigned_task = None
         self.config = config
         self.agent_config = agent_config
-
-        # _local_tasks_info = self.agent.get_tasks_nearby()
-        # _local_agents_info = self.agent.get_agents_nearby()
-        # TODO get from blackboard
-        _local_tasks_info = None
-        _local_agents_info = None
-        if self.config.initialize_partition == "Distance":
-            if _local_tasks_info and _local_agents_info:
-                self.partition = self.initialize_partition_by_distance(
-                    _local_agents_info, _local_tasks_info, self.partition
-                )
-                self.assigned_task = self.get_assigned_task_from_partition(
-                    self.partition
-                )
+        self.partition: dict[int, set] = dict()
+        self.partition_initialized = False
 
         self.current_utilities = {}
         self.message_to_share = {  # Message Initialization
@@ -54,6 +42,19 @@ class GRAPE:
             "evolution_number": self.evolution_number,
             "time_stamp": self.time_stamp,
         }
+
+    def initialize_partition(self, agents: list[Agent], tasks: list[Task]):
+        self.partition = {task.task_id: set() for task in tasks}
+
+        if self.config.initialize_partition == "Distance":
+            if tasks and agents:
+                self.partition = self.initialize_partition_by_distance(
+                    agents, tasks, self.partition
+                )
+                self.assigned_task = self.get_assigned_task_from_partition(
+                    self.partition
+                )
+        self.partition_initialized = True
 
     def initialize_partition_by_distance(self, agents_info, tasks_info, partition):
         for agent in agents_info:
@@ -67,9 +68,10 @@ class GRAPE:
             }
             if len(task_distance) > 0:
                 preferred_task_id = min(task_distance, key=task_distance.get)
-                self.partition.setdefault(
-                    preferred_task_id, set()
-                )  # Ensure the task_id key exists in the partition. Set tis value as empty set if it doesn't already exist (This is for dynamic task generation)
+
+                # Ensure the task_id key exists in the partition.
+                # Set tis value as empty set if it doesn't already exist (This is for dynamic task generation)
+                self.partition.setdefault(preferred_task_id, set())
                 partition[preferred_task_id].add(agent.agent_id)
         return partition
 
@@ -91,16 +93,20 @@ class GRAPE:
         """
 
         _local_tasks_info = blackboard["local_tasks_info"]
+        _local_agents_info = blackboard["local_agents_info"]
+
+        if not self.partition_initialized:
+            self.initialize_partition(_local_agents_info, _local_tasks_info)
 
         # Check if the existing task is done
         if self.assigned_task is not None and self.assigned_task.completed:
             _neighbor_agents_info = self.get_neighbor_agents_info_in_partition(
-                self.partition, blackboard["local_agents_info"]
+                self.partition, _local_agents_info
             )
+
             # Default routine
-            self.partition[self.assigned_task.task_id] = (
-                set()
-            )  # Empty the previous task's coalition
+            # Empty the previous task's coalition
+            self.partition[self.assigned_task.task_id] = set()
             self.assigned_task = None
             self.satisfied = False
 
@@ -121,9 +127,11 @@ class GRAPE:
         if len(_local_tasks_info) == 0:
             return None
         if not self.satisfied:
-            _max_task_id, _max_utility = self.find_max_utility_task(_local_tasks_info)
+            _max_task_id, _max_utility = self.find_max_utility_task(
+                _local_tasks_info, agent_position
+            )
             self.assigned_task = self.get_assigned_task_from_partition(self.partition)
-            if _max_utility > self.compute_utility(self.assigned_task):
+            if _max_utility > self.compute_utility(self.assigned_task, agent_position):
                 self.update_partition(_max_task_id)
                 self.evolution_number += 1
                 self.time_stamp = random.uniform(0, 1)
@@ -150,7 +158,6 @@ class GRAPE:
         if not self.satisfied:
             if not self.config.execute_movements_during_convergence:
                 # Neutralise the agent's current movement during converging to a Nash stable partition
-                # self.agent.reset_movement()
                 blackboard["stop_moving"] = True
 
         return (
@@ -167,10 +174,12 @@ class GRAPE:
         self.discard_myself_from_coalition(self.assigned_task)
         self.partition[preferred_task_id].add(self.agent_id)
 
-    def find_max_utility_task(self, tasks_info):
+    def find_max_utility_task(self, tasks_info, agent_position: np.ndarray):
         _current_utilities = {
             task.task_id: (
-                self.compute_utility(task) if not task.completed else float("-inf")
+                self.compute_utility(task, agent_position)
+                if not task.completed
+                else float("-inf")
             )
             for task in tasks_info
         }
@@ -182,18 +191,19 @@ class GRAPE:
 
         return _max_task_id, _max_utility
 
-    def compute_utility(self, task):  # Individual Utility Function
+    def compute_utility(self, task: Task, agent_position: np.ndarray) -> float:
+        # Individual Utility Function
         if task is None:
             return float("-inf")
 
-        self.partition.setdefault(
-            task.task_id, set()
-        )  # Ensure the task_id key exists in the partition. Set tis value as empty set if it doesn't already exist (This is for dynamic task generation)
+        # Ensure the task_id key exists in the partition.
+        # Set tis value as empty set if it doesn't already exist (This is for dynamic task generation)
+        self.partition.setdefault(task.task_id, set())
         num_collaborator = len(self.partition[task.task_id])
         if self.agent_id not in self.partition[task.task_id]:
             num_collaborator += 1
 
-        distance = np.linalg.norm(self.agent.position - task.position)
+        distance = np.linalg.norm(agent_position - task.position)
         utility = task.amount / (
             num_collaborator
         ) - self.config.cost_weight_factor * distance * (
