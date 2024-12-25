@@ -12,7 +12,7 @@ from modules.configuration_models import (
     RenderingMode,
     RenderingOptions,
 )
-from modules.simulation import generate_tasks, generate_agents
+from modules.factories import generate_tasks, generate_agents
 
 
 parser = argparse.ArgumentParser(
