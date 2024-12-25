@@ -1,21 +1,27 @@
 import random
-import pygame
-from modules.utils import config
 
-MODE = config["decision_making"]["FirstClaimGreedy"]["mode"]
-W_FACTOR_COST = config["decision_making"]["FirstClaimGreedy"]["weight_factor_cost"]
-ENFORCED_COLLABORATION = config["decision_making"]["FirstClaimGreedy"].get(
-    "enforced_collaboration", False
+import numpy as np
+from pydantic import (
+    BaseModel,
+    Field,
+    PositiveFloat,
 )
 
 
+class FirstClaimGreedyConfig(BaseModel):
+    mode: str
+    weight_factor_cost: PositiveFloat
+    enforced_collaboration: bool = Field(default=False)
+
+
 class FirstClaimGreedy:  # Task selection within each agent's `situation_awareness_radius`
-    def __init__(self, agent):
+    def __init__(self, agent, config: FirstClaimGreedyConfig):
         self.agent_id = agent.agent_id
         self.agent = agent
+        self.config = config
         self.assigned_task = None
 
-    def decide(self, blackboard):
+    def decide(self, blackboard, timestep):
         # Place your decision-making code for each agent
         """
         Output:
@@ -38,7 +44,7 @@ class FirstClaimGreedy:  # Task selection within each agent's `situation_awarene
             return None
 
         # Given that there is only one task nearby, then enforced to select this
-        if ENFORCED_COLLABORATION and len(local_tasks_info) == 1:
+        if self.config.enforced_collaboration and len(local_tasks_info) == 1:
             self.assigned_task = local_tasks_info[0]
             return self.assigned_task.task_id
 
@@ -48,7 +54,7 @@ class FirstClaimGreedy:  # Task selection within each agent's `situation_awarene
                 local_tasks_info,
                 blackboard["messages_received"],
             )
-            self.agent.reset_messages_received()
+
             if len(unassigned_tasks_info) == 0:
                 self.assigned_task = None
                 self.message_to_share = {
@@ -57,14 +63,20 @@ class FirstClaimGreedy:  # Task selection within each agent's `situation_awarene
                 }
                 return None
 
-            if MODE == "Random":  # Choose a task randomly
+            # Choose a task randomly
+            if self.config.mode == "Random":
                 target_task_id = random.choice(unassigned_tasks_info).task_id
 
-            elif MODE == "MinDist":  # Choose the closest task
+            # Choose the closest task
+            elif self.config.mode == "MinDist":
                 target_task_id = self.find_min_dist_task(unassigned_tasks_info)
 
-            elif MODE == "MaxUtil":  # Choose the task providing the maximum utility
+            # Choose the task providing the maximum utility
+            elif self.config.mode == "MaxUtil":
                 target_task_id = self.find_max_utility_task(unassigned_tasks_info)
+
+            else:
+                raise ValueError(f"Unrecognized selection mode: {self.config.mode}")
 
             self.assigned_task = self.agent.tasks_info[target_task_id]
 
@@ -114,12 +126,12 @@ class FirstClaimGreedy:  # Task selection within each agent's `situation_awarene
         if task is None:
             return float("-inf")
 
-        distance = (self.agent.position - task.position).length()
-        return task.amount - W_FACTOR_COST * distance
+        distance = self.compute_distance(task.position)
+        return task.amount - self.config.weight_factor_cost * distance
 
     def compute_distance(self, task):  # Individual Utility Function
         if task is None:
             return float("inf")
 
-        distance = (self.agent.position - task.position).length()
+        distance = np.linalg.norm(self.agent.position - task.position)
         return distance

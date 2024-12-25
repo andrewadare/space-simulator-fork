@@ -1,8 +1,15 @@
-from modules.utils import config, merge_dicts
+from modules.utils import merge_dicts
+
+import numpy as np
+from pydantic import (
+    BaseModel,
+    Field,
+    PositiveFloat,
+)
 
 
-# No custom params (?)
-class CBAAConfig: ...
+class CBAAConfig(BaseModel):
+    lambda_param: PositiveFloat = Field(default=0.999)
 
 
 class CBAA:
@@ -11,12 +18,13 @@ class CBAA:
         self.agent = agent
         self.assigned_task = None
         self.satisfied = False  # Rename if necessary
+        self.config = config
 
         # Define any variables if necessary
         self.x = {}  # task assignment (key: task id; value: 0 or 1)
         self.y = {}  # winning bid list (key: task id; value: bid value)
 
-    def decide(self, blackboard):
+    def decide(self, blackboard, timestep):
         # Place your decision-making code for each agent
         """
         Output:
@@ -99,25 +107,19 @@ class CBAA:
                 self.satisfied = False
                 self.assigned_task = None
 
-            # Reset Message
-            self.agent.reset_messages_received()
-
             return (
                 self.assigned_task.task_id if self.assigned_task is not None else None
             )
 
     def calculate_score(self, task):
-        distance_to_task = self.agent.position.distance_to(task.position)
+
+        distance = np.linalg.norm(task.position - self.agent.position)
         # Time-discounted reward
-        LAMBDA = 0.999
-        expected_reward = (
-            LAMBDA
-            ** (
-                distance_to_task / self.agent.max_speed
-                + task.amount / self.agent.work_rate
-            )
-            * task.amount
+        exponent = (
+            distance / self.agent.params.max_speed
+            + task.amount / self.agent.params.work_rate
         )
+        expected_reward = self.config.lambda_param**exponent * task.amount
         return expected_reward
 
     def update_dict_based_on_comparison(my_dict, other_dict):
