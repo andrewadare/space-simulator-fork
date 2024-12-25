@@ -10,6 +10,7 @@ from pydantic import (
 
 from modules.utils import pre_render_text
 from modules.agent import Agent
+from modules.configuration_models import AgentConfig
 
 
 class GRAPEConfig(BaseModel):
@@ -21,7 +22,7 @@ class GRAPEConfig(BaseModel):
 
 
 class GRAPE:
-    def __init__(self, agent, config: GRAPEConfig):
+    def __init__(self, agent, config: GRAPEConfig, agent_config: AgentConfig):
         self.agent_id = agent.agent_id
         self.agent = agent
         self.satisfied = False
@@ -30,9 +31,11 @@ class GRAPE:
         self.partition = {task.task_id: set() for task in self.agent.tasks_info}
         self.assigned_task = None
         self.config = config
+        self.agent_config = agent_config
 
         # _local_tasks_info = self.agent.get_tasks_nearby()
         # _local_agents_info = self.agent.get_agents_nearby()
+        # TODO get from blackboard
         _local_tasks_info = None
         _local_agents_info = None
         if self.config.initialize_partition == "Distance":

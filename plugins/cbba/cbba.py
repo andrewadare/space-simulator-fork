@@ -15,6 +15,7 @@ from pydantic import (
 
 from modules.utils import merge_dicts
 from modules.agent import Agent
+from modules.configuration_models import AgentConfig
 
 
 class Phase(Enum):
@@ -31,10 +32,11 @@ class CBBAConfig(BaseModel):
 
 
 class CBBA:
-    def __init__(self, agent, config: CBBAConfig):
+    def __init__(self, agent, config: CBBAConfig, agent_config: AgentConfig):
         self.agent_id = agent.agent_id
         self.agent = agent
         self.conf = config
+        self.agent_config = agent_config
 
         self.z = {}  # Winning agent list (key: task_id; value: agent_id)
         self.y = {}  # Winning bid list (key: task_id; value: bid value)

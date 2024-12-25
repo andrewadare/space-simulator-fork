@@ -7,6 +7,8 @@ from pydantic import (
     PositiveFloat,
 )
 
+from modules.configuration_models import AgentConfig
+
 
 class FirstClaimGreedyConfig(BaseModel):
     mode: str
@@ -14,11 +16,16 @@ class FirstClaimGreedyConfig(BaseModel):
     enforced_collaboration: bool = Field(default=False)
 
 
-class FirstClaimGreedy:  # Task selection within each agent's `situation_awareness_radius`
-    def __init__(self, agent, config: FirstClaimGreedyConfig):
+class FirstClaimGreedy:
+    """Task selection within each agent's `situation_awareness_radius`"""
+
+    def __init__(
+        self, agent, config: FirstClaimGreedyConfig, agent_config: AgentConfig
+    ):
         self.agent_id = agent.agent_id
         self.agent = agent
         self.config = config
+        self.agent_config = agent_config
         self.assigned_task = None
 
     def decide(self, blackboard, timestep):

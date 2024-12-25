@@ -1,5 +1,3 @@
-from modules.utils import merge_dicts
-
 import numpy as np
 from pydantic import (
     BaseModel,
@@ -7,18 +5,22 @@ from pydantic import (
     PositiveFloat,
 )
 
+from modules.utils import merge_dicts
+from modules.configuration_models import AgentConfig
+
 
 class CBAAConfig(BaseModel):
     lambda_param: PositiveFloat = Field(default=0.999)
 
 
 class CBAA:
-    def __init__(self, agent, config: CBAAConfig):
+    def __init__(self, agent, config: CBAAConfig, agent_config: AgentConfig):
         self.agent_id = agent.agent_id
         self.agent = agent
         self.assigned_task = None
         self.satisfied = False  # Rename if necessary
         self.config = config
+        self.agent_config = agent_config
 
         # Define any variables if necessary
         self.x = {}  # task assignment (key: task id; value: 0 or 1)

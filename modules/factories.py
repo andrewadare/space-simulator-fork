@@ -108,7 +108,7 @@ def generate_agents(
     for id, position in enumerate(positions):
         agent = Agent(id, position, tasks, bounds, params)
         agent.task_assigner = create_task_decider(
-            agent, config.decision_making, strategy
+            agent, config.decision_making, params, strategy
         )
         agent.tree = create_behavior_tree(
             Path("bt_xml") / params.behavior_tree_xml, agent.node_callbacks
@@ -123,7 +123,9 @@ def generate_agents(
     return agents
 
 
-def create_task_decider(agent: Agent, config_dict: dict, strategy: str):
+def create_task_decider(
+    agent: Agent, config_dict: dict, agent_config: AgentConfig, strategy: str
+):
     """Factory for creating an object used to guide agents in which task to pursue next.
     Types are loaded from a plugin module.
     """
@@ -136,4 +138,4 @@ def create_task_decider(agent: Agent, config_dict: dict, strategy: str):
     cls = getattr(module, class_name)
     config_cls = getattr(module, class_name + "Config")
     config_obj = config_cls(**config_dict[class_name])
-    return cls(agent, config_obj)
+    return cls(agent, config_obj, agent_config)
