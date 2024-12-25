@@ -14,6 +14,7 @@ from pydantic import (
 
 
 from modules.utils import merge_dicts
+from modules.agent import Agent
 
 
 class Phase(Enum):
@@ -107,7 +108,9 @@ class CBBA:
             return None
 
         if self.phase == Phase.ASSIGNMENT_CONSENSUS:
-            self.update_time_stamp(blackboard["messages_received"])
+            self.update_time_stamp(
+                blackboard["messages_received"], blackboard["local_agents_info"]
+            )
             # Phase 2 Consensus
             for task in local_tasks_info:
                 for other_agent_message in blackboard["messages_received"]:
@@ -228,7 +231,7 @@ class CBBA:
             updated_bundle, updated_path = self.update_bundle_and_path()
 
             # Reset Message
-            self.agent.reset_messages_received()
+            # self.agent.reset_messages_received()
             if self.conf.winning_bid_cancel:
                 if len(updated_bundle) > 0:
                     self.no_bundle_duration = 0
@@ -323,14 +326,16 @@ class CBBA:
             # LIne 14
             self.z[task_to_add.task_id] = self.agent_id
 
-    def update_time_stamp(self, messages_received: list[dict]):
+    def update_time_stamp(
+        self, messages_received: list[dict], local_agents: list[Agent]
+    ):
         """
         Eqn (5)
         """
 
         # For neighbor agents
         current_timestamp = int(time.time())
-        for other_agent in self.agent.agents_nearby:
+        for other_agent in local_agents:
             self.s[other_agent.agent_id] = current_timestamp
 
         # For two-hop neighbor agents
@@ -435,7 +440,6 @@ class CBBA:
                 )
                 * task.amount
             )
-            # expected_reward_from_task += (task.amount - (distance_to_next_task_from_start/self.agent.max_speed + task.amount/self.agent.work_rate))
             current_position = next_position
 
         return expected_reward_from_task

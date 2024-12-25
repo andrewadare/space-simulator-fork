@@ -86,7 +86,7 @@ def draw_tail(agent, screen):
 
 def draw_communication_topology(agent, screen, agents):
     # Draw lines to neighbor agents
-    for neighbor_agent in agent.agents_nearby:
+    for neighbor_agent in agent.blackboard["local_agents_info"]:
         if neighbor_agent.agent_id > agent.agent_id:
             neighbor_position = agents[neighbor_agent.agent_id].position
             pygame.draw.line(

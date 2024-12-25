@@ -1,34 +1,41 @@
 import random
 import copy
-from modules.utils import config, pre_render_text
 
-KEEP_MOVING_DURING_CONVERGENCE = config["decision_making"]["GRAPE"].get(
-    "execute_movements_during_convergence", False
+import numpy as np
+from pydantic import (
+    BaseModel,
+    Field,
+    PositiveFloat,
 )
-INITIALIZE_PARTITION = config["decision_making"]["GRAPE"]["initialize_partition"]
-REINITIALIZE_PARTITION = config["decision_making"]["GRAPE"][
-    "reinitialize_partition_on_completion"
-]
-COST_WEIGHT_FACTOR = config["decision_making"]["GRAPE"]["cost_weight_factor"]
-SOCIAL_INHIBITION_FACTOR = config["decision_making"]["GRAPE"][
-    "social_inhibition_factor"
-]
+
+from modules.utils import pre_render_text
+from modules.agent import Agent
+
+
+class GRAPEConfig(BaseModel):
+    execute_movements_during_convergence: bool = Field(default=False)
+    cost_weight_factor: PositiveFloat
+    social_inhibition_factor: PositiveFloat
+    initialize_partition: str  # Options: ""; "Distance"
+    reinitialize_partition_on_completion: str  # Options: ""; "Distance";
 
 
 class GRAPE:
-    def __init__(self, agent):
+    def __init__(self, agent, config: GRAPEConfig):
         self.agent_id = agent.agent_id
         self.agent = agent
         self.satisfied = False
-        self.evolution_number = 0  # Initialize evolution_number
-        self.time_stamp = 0  # Initialize time_stamp
-        self.partition = {
-            task.task_id: set() for task in self.agent.tasks_info
-        }  # Initialize partition with emptysets
+        self.evolution_number = 0
+        self.time_stamp = 0
+        self.partition = {task.task_id: set() for task in self.agent.tasks_info}
         self.assigned_task = None
-        _local_tasks_info = self.agent.get_tasks_nearby()
-        _local_agents_info = self.agent.get_agents_nearby()
-        if INITIALIZE_PARTITION == "Distance":
+        self.config = config
+
+        # _local_tasks_info = self.agent.get_tasks_nearby()
+        # _local_agents_info = self.agent.get_agents_nearby()
+        _local_tasks_info = None
+        _local_agents_info = None
+        if self.config.initialize_partition == "Distance":
             if _local_tasks_info and _local_agents_info:
                 self.partition = self.initialize_partition_by_distance(
                     _local_agents_info, _local_tasks_info, self.partition
@@ -51,7 +58,7 @@ class GRAPE:
                 task.task_id: (
                     float("inf")
                     if task.completed
-                    else (agent.position - task.position).length()
+                    else np.linalg.norm(agent.position - task.position)
                 )
                 for task in tasks_info
             }
@@ -63,15 +70,17 @@ class GRAPE:
                 partition[preferred_task_id].add(agent.agent_id)
         return partition
 
-    def get_neighbor_agents_info_in_partition(self, partition):
+    def get_neighbor_agents_info_in_partition(
+        self, partition, nearby_agents: list[Agent]
+    ):
         _neighbor_agents_info = [
             neighbor_agent
-            for neighbor_agent in self.agent.agents_info
+            for neighbor_agent in nearby_agents
             if neighbor_agent.agent_id in partition[self.assigned_task.task_id]
         ]
         return _neighbor_agents_info
 
-    def decide(self, blackboard):
+    def decide(self, blackboard: dict, sample_time: float):
         """
         Output:
             - `task_id`, if task allocation works well
@@ -83,7 +92,7 @@ class GRAPE:
         # Check if the existing task is done
         if self.assigned_task is not None and self.assigned_task.completed:
             _neighbor_agents_info = self.get_neighbor_agents_info_in_partition(
-                self.partition
+                self.partition, blackboard["local_agents_info"]
             )
             # Default routine
             self.partition[self.assigned_task.task_id] = (
@@ -93,7 +102,7 @@ class GRAPE:
             self.satisfied = False
 
             # Special routine
-            if REINITIALIZE_PARTITION == "Distance":
+            if self.config.reinitialize_partition_on_completion == "Distance":
                 self.partition = self.initialize_partition_by_distance(
                     _neighbor_agents_info, _local_tasks_info, self.partition
                 )
@@ -132,12 +141,11 @@ class GRAPE:
         self.evolution_number, self.time_stamp, self.partition, self.satisfied = (
             self.distributed_mutex(blackboard["messages_received"])
         )
-        self.agent.reset_messages_received()
 
         self.assigned_task = self.get_assigned_task_from_partition(self.partition)
 
         if not self.satisfied:
-            if not KEEP_MOVING_DURING_CONVERGENCE:
+            if not self.config.execute_movements_during_convergence:
                 self.agent.reset_movement()  # Neutralise the agent's current movement during converging to a Nash stable partition
 
         return (
@@ -180,9 +188,11 @@ class GRAPE:
         if self.agent_id not in self.partition[task.task_id]:
             num_collaborator += 1
 
-        distance = (self.agent.position - task.position).length()
-        utility = task.amount / (num_collaborator) - COST_WEIGHT_FACTOR * distance * (
-            num_collaborator**SOCIAL_INHIBITION_FACTOR
+        distance = np.linalg.norm(self.agent.position - task.position)
+        utility = task.amount / (
+            num_collaborator
+        ) - self.config.cost_weight_factor * distance * (
+            num_collaborator**self.config.social_inhibition_factor
         )
         return utility
 

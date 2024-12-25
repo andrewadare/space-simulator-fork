@@ -35,7 +35,6 @@ class Agent:
         self.blackboard = {"messages_received": []}
         self.tasks_info: list[Task] = tasks  # TODO see README
         self.all_agents: list[Agent] = []  # TODO see README
-        self.agents_nearby: list[Agent] = []
         self.message_to_share = {}
         self.assigned_task_id = None  # Local decision-making result.
         self.planned_tasks = []  # Local decision-making result.
@@ -64,10 +63,16 @@ class Agent:
 
     def sense(self) -> Status:
         """Find waypoints and other agents in this agent's vicinity."""
+        self.blackboard["local_agents_info"] = self.get_agents_nearby()
         self.blackboard["local_tasks_info"] = self.get_tasks_nearby(
             incomplete_only=True
         )
-        self.blackboard["local_agents_info"] = self.local_message_receive()
+        for other_agent in self.blackboard["local_agents_info"]:
+            if other_agent.agent_id != self.agent_id:
+                self.blackboard["messages_received"].append(
+                    other_agent.message_to_share
+                )
+
         self.blackboard["LocalSensingNode"] = Status.SUCCESS
         return Status.SUCCESS
 
@@ -84,6 +89,10 @@ class Agent:
         self.set_assigned_task_id(assigned_task_id)
         self.blackboard["assigned_task_id"] = assigned_task_id
         self.blackboard["DecisionMakingNode"] = status
+
+        # Clear inbox
+        self.blackboard["messages_received"] = []
+
         return status
 
     def goto_task(self) -> Status:
@@ -179,17 +188,8 @@ class Agent:
             vector *= max_value / mag
         return vector
 
-    def local_message_receive(self):
-        self.agents_nearby = self.get_agents_nearby()
-        for other_agent in self.agents_nearby:
-            if other_agent.agent_id != self.agent_id:
-                self.blackboard["messages_received"].append(
-                    other_agent.message_to_share
-                )
-        return self.agents_nearby
-
-    def reset_messages_received(self):
-        self.blackboard["messages_received"] = []
+    # def reset_messages_received(self):
+    #     self.blackboard["messages_received"] = []
 
     def set_assigned_task_id(self, task_id):
         self.assigned_task_id = task_id

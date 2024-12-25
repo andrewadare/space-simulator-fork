@@ -1,11 +1,12 @@
 from modules.utils import config, merge_dicts
 
-# MY_PARAMETER = config['decision_making']['my_decision_making_plugin']['my_parameter']
+
+# No custom params (?)
+class CBAAConfig: ...
 
 
-# Define decision-making class
 class CBAA:
-    def __init__(self, agent):
+    def __init__(self, agent, config: CBAAConfig):
         self.agent_id = agent.agent_id
         self.agent = agent
         self.assigned_task = None
