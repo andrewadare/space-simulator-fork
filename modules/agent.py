@@ -112,7 +112,8 @@ class Agent:
                 self.tasks_info[assigned_task_id].reduce_amount(
                     self.params.work_rate * self.params.timestep
                 )
-                self.update_task_amount_done(self.params.work_rate)
+                self.task_amount_done += self.params.work_rate
+
             self.follow(goal.position)
 
         self.blackboard["TaskExecutingNode"] = Status.RUNNING
@@ -139,7 +140,6 @@ class Agent:
         return await self.tree.run()
 
     def follow(self, target: np.ndarray):
-        """TODO: rename to update_acceleration? No following here."""
         offset = target - self.position
         distance = np.linalg.norm(offset)
         direction = offset / distance
@@ -203,7 +203,6 @@ class Agent:
         return nearby_agents
 
     def get_tasks_nearby(self, incomplete_only=False):
-
         if incomplete_only:
             tasks = [t for t in self.tasks_info if not t.completed]
         else:
@@ -217,6 +216,3 @@ class Agent:
                 nearby_tasks.append(task)
 
         return nearby_tasks
-
-    def update_task_amount_done(self, amount):
-        self.task_amount_done += amount
