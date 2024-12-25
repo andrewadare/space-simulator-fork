@@ -103,7 +103,8 @@ class CBBA:
             }
 
             self.phase = Phase.ASSIGNMENT_CONSENSUS
-            self.agent.set_planned_tasks(self.path)  # For visualisation
+            blackboard["planned_tasks"] = self.path  # For visualization
+            # self.agent.set_planned_tasks(self.path)  # For visualisation
             self.assigned_task = None  # 아직 consensus 안된거니까 None 이라고 해줘야함
             return None
 
@@ -250,7 +251,8 @@ class CBBA:
             else:
                 self.bundle = updated_bundle
                 self.path = updated_path
-                self.agent.set_planned_tasks(self.path)  # For visualisation
+                blackboard["planned_tasks"] = self.path  # For visualization
+                # self.agent.set_planned_tasks(self.path)  # For visualisation
                 self.assigned_task = (
                     None  # NOTE: 불만족 상황이 되었으니 assigned_task 초기화
                 )

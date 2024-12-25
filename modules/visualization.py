@@ -105,8 +105,10 @@ def draw_agent_id(agent, screen, font):
 
 def draw_assigned_task_id(agent, screen, font):
     # Draw assigned_task_id next to agent position
-    if len(agent.planned_tasks) > 0:
-        assigned_task_id_list = [task.task_id for task in agent.planned_tasks]
+    if len(agent.blackboard["planned_tasks"]) > 0:
+        assigned_task_id_list = [
+            task.task_id for task in agent.blackboard["planned_tasks"]
+        ]
     else:
         assigned_task_id_list = agent.assigned_task_id
     text_surface = font.render(f"task_id: {assigned_task_id_list}", True, (50, 50, 50))
@@ -157,7 +159,7 @@ def draw_path_to_assigned_tasks(agent, screen):
     ]
 
     # Iterate over the assigned tasks and draw lines connecting them
-    for task in agent.planned_tasks:
+    for task in agent.blackboard["planned_tasks"]:
         task_position = task.position
         pygame.draw.line(
             screen,

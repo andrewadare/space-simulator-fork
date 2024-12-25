@@ -21,7 +21,7 @@ class Agent:
         position: np.ndarray,
         tasks: list[Task],
         bounds: OperatingArea,
-        conf: AgentConfig,
+        agent_config: AgentConfig,
     ):
         self.agent_id = agent_id
         self.position = np.array(position)
@@ -29,23 +29,23 @@ class Agent:
         self.acceleration = np.zeros(2)
         self.rotation = 0
         self.bounds = bounds
-        self.params = conf
+        self.params = agent_config
         self.tail = deque(maxlen=400)
-        self.blackboard = {"messages_received": []}
         self.tasks_info: list[Task] = tasks  # TODO see README
         self.all_agents: list[Agent] = []  # TODO see README
         self.message_to_share = {}
         self.assigned_task_id = None  # Local decision-making result.
-        self.planned_tasks = []  # Local decision-making result.
         self.distance_moved = 0.0
         self.task_amount_done = 0.0
 
-        # TODO: find a way to make this external to Agent
-        # self.task_assigner = create_task_decider(self, conf.decision_making)
-        self.task_assigner = None
+        # Shared with and modified by task allocator
+        self.blackboard = dict(
+            messages_received=[],
+            # For visualization. Not used by all strategies.
+            planned_tasks=[],
+        )
 
-        # Create behavior tree for this agent.
-        # Agent behaviors are bound to action nodes as callbacks.
+        # Agent behaviors for self.tree
         self.node_callbacks: dict[str, ReturnsStatus] = dict(
             LocalSensingNode=self.sense,
             DecisionMakingNode=self.decide_task,
@@ -53,11 +53,8 @@ class Agent:
             ExplorationNode=self.explore,
         )
 
+        self.task_assigner = None
         self.tree = None
-
-        # self.tree: Node = create_behavior_tree(
-        #     Path("bt_xml") / conf.behavior_tree_xml, self.node_callbacks
-        # )
 
         # For self.explore callback
         self.exploration_time = 0.0
@@ -192,9 +189,6 @@ class Agent:
 
     def set_assigned_task_id(self, task_id):
         self.assigned_task_id = task_id
-
-    def set_planned_tasks(self, task_list):  # This is for visualisation
-        self.planned_tasks = task_list
 
     def get_agents_nearby(self):
         r2 = self.params.communication_radius**2
