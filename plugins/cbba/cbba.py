@@ -55,7 +55,6 @@ class CBBA:
         self.no_bundle_duration = 0
 
     def decide(self, blackboard: dict, sample_time: float):
-        # Place your decision-making code for each agent
         """
         Output:
             - `task_id`, if task allocation works well
@@ -78,7 +77,8 @@ class CBBA:
         if len(local_tasks_info) == 0:
             return None
 
-        # Neutralize all the winning bid information if there are local tasks nearby but the agent cannot choose any of them for a certain period
+        # Neutralize all the winning bid information if there are local tasks nearby
+        # but the agent cannot choose any of them for a certain period
         if self.conf.winning_bid_cancel:
             if len(self.bundle) == 0:
                 self.no_bundle_duration += sample_time
@@ -236,12 +236,9 @@ class CBBA:
                 if len(updated_bundle) > 0:
                     self.no_bundle_duration = 0
 
-            if (
-                updated_bundle == self.bundle
-            ):  # NOTE: 원래 모든 agents가 다 converge할 때까지 기다려야하는데, 분산화 현실성상 진행
-                # Converged!
-
-                # _next_assigned_task = next((task for task in self.agent.assigned_tasks if task.completed is False), None)
+            # NOTE: 원래 모든 agents가 다 converge할 때까지 기다려야하는데, 분산화 현실성상 진행
+            # Converged!
+            if updated_bundle == self.bundle:
                 self.assigned_task = self.path[0] if self.path else None
 
                 return (
@@ -266,7 +263,8 @@ class CBBA:
                 self.assigned_task.task_id if self.assigned_task is not None else None
             )
         else:
-            self.agent.reset_movement()  # Neutralise the agent's current movement during converging to a consensus
+            # Neutralise the agent's current movement during converging to a consensus
+            self.agent.reset_movement()
             return None
 
     def _update(self, task_id, y_k, z_k):
@@ -297,7 +295,6 @@ class CBBA:
         Construct bundle and path list with local information.
         Algorithm 3 in CBBA paper
         """
-        # J = list(range(self.task_num))
 
         while len(self.bundle) < min(
             self.conf.max_tasks_per_agent, len(local_tasks_info)
@@ -352,9 +349,9 @@ class CBBA:
         # Calculate S_p for the constructed path list
         S_p = self.calculate_score_along_path(self.agent.position, self.path)
 
-        my_bid_list = (
-            {}
-        )  # My new bid list (key: task_id; value: bid value), denoted by 'c' in the paper (Algorithm 3 Line 3)
+        # My new bid list (key: task_id; value: bid value),
+        # denoted by 'c' in the paper (Algorithm 3 Line 3)
+        my_bid_list = {}
         best_insertion_idx_list = {}  # (key: task_id; value: bundle insertion position)
 
         for task in local_tasks_info:
@@ -370,16 +367,15 @@ class CBBA:
                 _marginal_score_by_new_task.append(S_p_plus_j_at_idx - S_p)
 
             _best_insertion_idx = np.argmax(_marginal_score_by_new_task)
-            _c_ij = _marginal_score_by_new_task[
-                _best_insertion_idx
-            ]  # Line 7 in Algorithm 3
+
+            # Line 7 in Algorithm 3
+            _c_ij = _marginal_score_by_new_task[_best_insertion_idx]
             my_bid_list[task.task_id] = _c_ij
             best_insertion_idx_list[task.task_id] = _best_insertion_idx
 
         return my_bid_list, best_insertion_idx_list
 
     def get_alternative_path(self, path, task, idx):
-        # _new_path = copy.deepcopy(path)
         _new_path = path[:]  # Creates a shallow copy of the list
         try:
             if idx < 0:
