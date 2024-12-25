@@ -104,7 +104,6 @@ class CBBA:
 
             self.phase = Phase.ASSIGNMENT_CONSENSUS
             blackboard["planned_tasks"] = self.path  # For visualization
-            # self.agent.set_planned_tasks(self.path)  # For visualisation
             self.assigned_task = None  # 아직 consensus 안된거니까 None 이라고 해줘야함
             return None
 
@@ -231,8 +230,6 @@ class CBBA:
             # Bundle Update
             updated_bundle, updated_path = self.update_bundle_and_path()
 
-            # Reset Message
-            # self.agent.reset_messages_received()
             if self.conf.winning_bid_cancel:
                 if len(updated_bundle) > 0:
                     self.no_bundle_duration = 0
@@ -252,7 +249,7 @@ class CBBA:
                 self.bundle = updated_bundle
                 self.path = updated_path
                 blackboard["planned_tasks"] = self.path  # For visualization
-                # self.agent.set_planned_tasks(self.path)  # For visualisation
+
                 self.assigned_task = (
                     None  # NOTE: 불만족 상황이 되었으니 assigned_task 초기화
                 )
@@ -266,7 +263,7 @@ class CBBA:
             )
         else:
             # Neutralise the agent's current movement during converging to a consensus
-            self.agent.reset_movement()
+            self.agent.reset_movement()  # TODO remove. Set a flag if needed
             return None
 
     def _update(self, task_id, y_k, z_k):
