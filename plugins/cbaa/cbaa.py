@@ -7,6 +7,7 @@ from pydantic import (
 
 from modules.utils import merge_dicts
 from modules.configuration_models import AgentConfig
+from modules.task import Task
 
 
 class CBAAConfig(BaseModel):
@@ -16,7 +17,6 @@ class CBAAConfig(BaseModel):
 class CBAA:
     def __init__(self, agent, config: CBAAConfig, agent_config: AgentConfig):
         self.agent_id = agent.agent_id
-        self.agent = agent
         self.assigned_task = None
         self.satisfied = False  # Rename if necessary
         self.config = config
@@ -56,7 +56,7 @@ class CBAA:
             selectable_tasks = {}
             task_rewards = {}
             for task in local_tasks_info:
-                task_reward = self.calculate_score(task)
+                task_reward = self.calculate_score(task, agent_position)
                 if task.task_id not in self.y or task_reward > self.y[task.task_id]:
                     selectable_tasks[task.task_id] = task
                     task_rewards[task.task_id] = task_reward
@@ -112,13 +112,13 @@ class CBAA:
                 self.assigned_task.task_id if self.assigned_task is not None else None
             )
 
-    def calculate_score(self, task):
+    def calculate_score(self, task: Task, agent_position: np.ndarray):
 
-        distance = np.linalg.norm(task.position - self.agent.position)
+        distance = np.linalg.norm(task.position - agent_position)
         # Time-discounted reward
         exponent = (
-            distance / self.agent.params.max_speed
-            + task.amount / self.agent.params.work_rate
+            distance / self.agent_config.max_speed
+            + task.amount / self.agent_config.work_rate
         )
         expected_reward = self.config.lambda_param**exponent * task.amount
         return expected_reward
