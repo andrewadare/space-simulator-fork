@@ -54,9 +54,7 @@ def generate_tasks(
     return tasks
 
 
-def generate_agents(
-    tasks: list[Task], config: SpaceConfig, strategy: str
-) -> list[Agent]:
+def generate_agents(config: SpaceConfig, strategy: str) -> list[Agent]:
 
     positions = generate_positions(
         config.agents.quantity,
@@ -82,7 +80,7 @@ def generate_agents(
     agents = []
     for agent_id, position in enumerate(positions):
         tasker = assignment_class(agent_id, assignment_config, agent_config)
-        agent = Agent(agent_id, position, tasks, tasker, bounds, agent_config)
+        agent = Agent(agent_id, position, tasker, bounds, agent_config)
         agents.append(agent)
 
     return agents

@@ -69,7 +69,7 @@ async def game_loop(space_config: SpaceConfig, strategy: str):
     timestep = 1.0 / sim_config.sampling_freq  # seconds
 
     tasks = generate_tasks(task_config.quantity, 0, task_config)
-    agents = generate_agents(tasks, space_config, strategy)
+    agents = generate_agents(space_config, strategy)
     task_generator = DynamicTaskGenerator(space_config)
 
     pygame.init()

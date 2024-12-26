@@ -21,7 +21,6 @@ class Agent:
         self,
         agent_id: int,
         position: np.ndarray,
-        tasks: list[Task],
         assigner: Any,  # TODO improve annotation
         bounds: OperatingArea,
         agent_config: AgentConfig,
@@ -34,8 +33,6 @@ class Agent:
         self.bounds = bounds
         self.params = agent_config
         self.tail = deque(maxlen=400)
-        # self.tasks_info: list[Task] = tasks  # TODO see README
-        # self.all_agents: list[Agent] = []  # TODO see README
         self.message_to_share = {}
         self.assigned_task_id = None  # Local decision-making result.
         self.distance_moved = 0.0
@@ -105,9 +102,7 @@ class Agent:
 
     def goto_task(self) -> Status:
         """Go to assigned task position."""
-
         if self.assigned_task_id is not None:
-            # goal: Task = self.tasks_info[self.assigned_task_id]
 
             # Find assigned task in local list
             idx: int = -1
@@ -124,7 +119,6 @@ class Agent:
             if distance < goal.radius + self.params.radius:
                 if goal.completed:
                     return Status.SUCCESS
-                # self.tasks_info[self.assigned_task_id].reduce_amount(
                 self.blackboard["local_tasks_info"][idx].reduce_amount(
                     self.params.work_rate * self.params.timestep
                 )
