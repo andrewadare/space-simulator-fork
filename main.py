@@ -109,7 +109,6 @@ async def game_loop(space_config: SpaceConfig, strategy: str):
             agent.blackboard["local_agents_info"] = agent.get_agents_nearby(agents)
             agent.blackboard["local_tasks_info"] = agent.get_tasks_nearby(tasks)
             await agent.run_tree()
-            agent.update(timestep)
 
         simulation_time += timestep
         tasks_left = sum(1 for task in tasks if not task.completed)

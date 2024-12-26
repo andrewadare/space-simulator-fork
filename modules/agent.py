@@ -65,10 +65,6 @@ class Agent:
 
     def sense(self) -> Status:
         """Find waypoints and other agents in this agent's vicinity."""
-        # self.blackboard["local_agents_info"] = self.get_agents_nearby()
-        # self.blackboard["local_tasks_info"] = self.get_tasks_nearby(
-        #     incomplete_only=True
-        # )
         for other_agent in self.blackboard["local_agents_info"]:
             if other_agent.agent_id != self.agent_id:
                 self.blackboard["messages_received"].append(
@@ -80,7 +76,7 @@ class Agent:
         """Decide which waypoint to visit."""
 
         # Some algorithms set a flag to stop the agent during convergence.
-        # Reset before deciding.
+        # Reset before deciding next task.
         self.blackboard["stop_moving"] = False
 
         self.assigned_task_id = self.task_assigner.decide(
@@ -149,16 +145,21 @@ class Agent:
         self.acceleration = self.limit(
             self.acceleration + speed * direction - self.velocity, self.params.max_accel
         )
+        self.update()
 
-    def update(self, timestep: float):
-        # Update velocity and position
-        self.velocity += self.acceleration * timestep
+    def update(self):
+        dt = self.params.timestep
+
+        # Integrate equations of motion
+        self.velocity += self.acceleration * dt
         self.velocity = self.limit(self.velocity, self.params.max_speed)
-        self.position += self.velocity * timestep
-        self.acceleration *= 0  # Reset acceleration
+        self.position += self.velocity * dt
+
+        # Reset acceleration
+        self.acceleration *= 0
 
         # Calculate the distance moved in this update and add to distance_moved
-        self.distance_moved += np.linalg.norm(self.velocity) * timestep
+        self.distance_moved += np.linalg.norm(self.velocity) * dt
 
         self.tail.append([*self.position])
 
@@ -174,7 +175,7 @@ class Agent:
         if abs(rotation_diff) > self.params.max_angular_speed:
             rotation_diff = math.copysign(self.params.max_angular_speed, rotation_diff)
 
-        self.rotation += rotation_diff * timestep
+        self.rotation += rotation_diff * dt
 
     def limit(self, vector: np.ndarray, max_value: float):
         mag = np.linalg.norm(vector)
