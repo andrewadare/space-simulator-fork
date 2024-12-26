@@ -21,9 +21,9 @@ class FirstClaimGreedy:
     """Task selection within each agent's `situation_awareness_radius`"""
 
     def __init__(
-        self, agent, config: FirstClaimGreedyConfig, agent_config: AgentConfig
+        self, agent_id: int, config: FirstClaimGreedyConfig, agent_config: AgentConfig
     ):
-        self.agent_id = agent.agent_id
+        self.agent_id = agent_id
         self.config = config
         self.agent_config = agent_config
         self.assigned_task = None

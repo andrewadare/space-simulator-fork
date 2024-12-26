@@ -23,8 +23,8 @@ class GRAPEConfig(BaseModel):
 
 
 class GRAPE:
-    def __init__(self, agent, config: GRAPEConfig, agent_config: AgentConfig):
-        self.agent_id = agent.agent_id
+    def __init__(self, agent_id: int, config: GRAPEConfig, agent_config: AgentConfig):
+        self.agent_id = agent_id
         self.satisfied = False
         self.evolution_number = 0
         self.time_stamp = 0

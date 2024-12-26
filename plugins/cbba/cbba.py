@@ -33,8 +33,8 @@ class CBBAConfig(BaseModel):
 
 
 class CBBA:
-    def __init__(self, agent, config: CBBAConfig, agent_config: AgentConfig):
-        self.agent_id = agent.agent_id
+    def __init__(self, agent_id: int, config: CBBAConfig, agent_config: AgentConfig):
+        self.agent_id = agent_id
         self.conf = config
         self.agent_config = agent_config
 

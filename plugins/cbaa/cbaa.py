@@ -15,8 +15,8 @@ class CBAAConfig(BaseModel):
 
 
 class CBAA:
-    def __init__(self, agent, config: CBAAConfig, agent_config: AgentConfig):
-        self.agent_id = agent.agent_id
+    def __init__(self, agent_id: int, config: CBAAConfig, agent_config: AgentConfig):
+        self.agent_id = agent_id
         self.assigned_task = None
         self.satisfied = False  # Rename if necessary
         self.config = config
