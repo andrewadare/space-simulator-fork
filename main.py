@@ -58,19 +58,19 @@ def handle_pygame_events(status: LoopStatus) -> LoopStatus:
     return status
 
 
-async def game_loop(config: SpaceConfig, strategy: str):
+async def game_loop(space_config: SpaceConfig, strategy: str):
 
-    sim_config: SimConfig = config.simulation
-    task_config: TaskConfig = config.tasks
-    rend_opts: RenderingOptions = config.simulation.rendering_options
+    sim_config: SimConfig = space_config.simulation
+    task_config: TaskConfig = space_config.tasks
+    rend_opts: RenderingOptions = space_config.simulation.rendering_options
 
-    vis.set_task_colors(config.tasks)
+    vis.set_task_colors(task_config)
 
     timestep = 1.0 / sim_config.sampling_freq  # seconds
 
-    tasks = generate_tasks(config.tasks.quantity, 0, task_config)
-    agents = generate_agents(tasks, config, strategy)
-    task_generator = DynamicTaskGenerator(config)
+    tasks = generate_tasks(task_config.quantity, 0, task_config)
+    agents = generate_agents(tasks, space_config, strategy)
+    task_generator = DynamicTaskGenerator(space_config)
 
     pygame.init()
     if sim_config.rendering_mode == RenderingMode.Screen:
