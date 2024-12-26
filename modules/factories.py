@@ -85,10 +85,6 @@ def generate_agents(
         agent = Agent(agent_id, position, tasks, tasker, bounds, agent_config)
         agents.append(agent)
 
-    # TODO investigate possibility of removing all_agents
-    for agent in agents:
-        agent.all_agents = agents
-
     return agents
 
 
