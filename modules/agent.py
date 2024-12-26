@@ -2,8 +2,10 @@ import numpy as np
 import math
 import random
 from collections import deque
+from typing import Any
+from pathlib import Path
 
-from modules.behavior_tree import Status, ReturnsStatus
+from modules.behavior_tree import Status, ReturnsStatus, Node, create_behavior_tree
 from modules.configuration_models import AgentConfig, OperatingArea
 from modules.task import Task
 
@@ -20,6 +22,7 @@ class Agent:
         agent_id: int,
         position: np.ndarray,
         tasks: list[Task],
+        assigner: Any,  # TODO improve annotation
         bounds: OperatingArea,
         agent_config: AgentConfig,
     ):
@@ -47,15 +50,17 @@ class Agent:
         )
 
         # Agent behaviors for self.tree
-        self.node_callbacks: dict[str, ReturnsStatus] = dict(
+        node_callbacks: dict[str, ReturnsStatus] = dict(
             LocalSensingNode=self.sense,
             DecisionMakingNode=self.decide_task,
             TaskExecutingNode=self.goto_task,
             ExplorationNode=self.explore,
         )
 
-        self.task_assigner = None
-        self.tree = None
+        self.task_assigner = assigner
+        self.tree: Node = create_behavior_tree(
+            Path("bt_xml") / agent_config.behavior_tree_xml, node_callbacks
+        )
 
         # For self.explore callback
         self.exploration_time = 0.0
