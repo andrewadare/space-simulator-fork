@@ -191,7 +191,6 @@ class Agent:
             d = agent.position - self.position
             if d @ d <= r2:
                 nearby_agents.append(agent)
-
         return nearby_agents
 
     def get_tasks_nearby(self, incomplete_only=False):
@@ -199,12 +198,10 @@ class Agent:
             tasks = [t for t in self.tasks_info if not t.completed]
         else:
             tasks = self.tasks_info
-
         r2 = self.params.situation_awareness_radius**2
         nearby_tasks: list[Task] = []
         for task in tasks:
             d = task.position - self.position
             if d @ d <= r2:
                 nearby_tasks.append(task)
-
         return nearby_tasks

@@ -3,8 +3,9 @@ import math
 import pygame
 import matplotlib.cm as cm
 
-from modules.configuration_models import TaskConfig
+from modules.configuration_models import TaskConfig, RenderingOptions
 from modules.task import Task
+from modules.agent import Agent
 
 
 TASK_COLORS: dict[int, tuple[int, int, int]] = {}
@@ -34,6 +35,60 @@ def set_task_colors(task_config: TaskConfig) -> None:
     TASK_COLORS = generate_task_colors(
         task_config.quantity + tasks_per_generation * max_generations
     )
+
+
+def draw_agents(agents: list[Agent], screen, rend_opts: RenderingOptions, font):
+
+    if rend_opts.agent_communication_topology:
+        for agent in agents:
+            draw_communication_topology(agent, screen, agents)
+
+    for agent in agents:
+        if rend_opts.agent_path_to_assigned_tasks:
+            draw_path_to_assigned_tasks(agent, screen)
+        if rend_opts.agent_tail:
+            draw_tail(agent, screen)
+        if rend_opts.agent_id:
+            draw_agent_id(agent, screen, font)
+        if rend_opts.agent_assigned_task_id:
+            draw_assigned_task_id(agent, screen, font)
+        if rend_opts.agent_work_done:
+            draw_work_done(agent, screen, font)
+        if rend_opts.agent_situation_awareness_circle:
+            draw_situation_awareness_circle(agent, screen)
+        draw_agent(agent, screen)
+
+
+def draw_tasks(
+    tasks: list[Task], screen, rend_opts: RenderingOptions, vis_factor: float
+):
+    """Draw tasks with task_id displayed"""
+    for task in tasks:
+        draw_task(task, screen, vis_factor)
+        if rend_opts.task_id:
+            draw_task_id(task, screen)
+
+
+def draw_task_status(tasks_left: int, sim_time: float, screen: pygame.Surface):
+    """Display task quantity and elapsed simulation time"""
+    task_time_text = pre_render_text(
+        f"Tasks left: {tasks_left}; Time: {sim_time:.2f}s",
+        36,
+        (0, 0, 0),
+    )
+    screen.blit(task_time_text, (screen.get_width() - 350, 20))
+
+
+def draw_mission_completed(screen: pygame.Surface):
+    mission_completed_text = pre_render_text("MISSION COMPLETED", 72, (0, 0, 0))
+
+    text_rect = mission_completed_text.get_rect(
+        center=(
+            screen.get_width() // 2,
+            screen.get_height() // 2,
+        )
+    )
+    screen.blit(mission_completed_text, text_rect)
 
 
 def draw_task(task: Task, screen, vis_factor: float):

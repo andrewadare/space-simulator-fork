@@ -78,8 +78,7 @@ def generate_agents(
         agent = Agent(agent_id, position, tasks, tasker, bounds, agent_config)
         agents.append(agent)
 
-    # TODO Does every agent really need this?
-    # Providing access to every agent at any time seems a bit unrealistic.
+    # TODO investigate possibility of removing all_agents
     for agent in agents:
         agent.all_agents = agents
 
