@@ -2,7 +2,12 @@ import random
 import importlib
 from pydantic import BaseModel
 
-from modules.configuration_models import SpaceConfig, AgentConfig, OperatingArea
+from modules.configuration_models import (
+    SpaceConfig,
+    AgentConfig,
+    OperatingArea,
+    DynamicTaskGenerationConfig,
+)
 from modules.task import Task
 from modules.agent import Agent
 
@@ -98,3 +103,40 @@ def load_task_assignment_types(config_dict: dict, strategy: str) -> tuple[type, 
     decision_class: type = getattr(module, class_name)
     decision_config_class: type = getattr(module, class_name + "Config")
     return (decision_class, decision_config_class)
+
+
+class DynamicTaskGenerator:
+    """Periodically adds new tasks to the simulation."""
+
+    def __init__(self, config: DynamicTaskGenerationConfig):
+        self.generation_count: int = 0
+        self.last_generation_time: float = 0
+        self.config = config
+        self.enabled = config.enabled
+
+    def add_new_tasks(self, num_tasks: int, tasks: list[Task]):
+        new_task_id_start = len(tasks)
+        new_tasks = generate_tasks(self.config, num_tasks, new_task_id_start)
+        tasks.extend(new_tasks)
+
+    def update(self, sim_time: float, tasks: list[Task]):
+        if self.done():
+            return
+
+        if sim_time - self.last_generation_time >= self.config.interval_seconds:
+            self.add_new_tasks(self.config.tasks_per_generation, tasks)
+            self.last_generation_time = sim_time
+            self.generation_count += 1
+
+            print(
+                f"[{sim_time:.2f}] "
+                f"Added {self.config.tasks_per_generation} new tasks: "
+                f"Generation {self.generation_count}."
+            )
+
+    def done(self) -> bool:
+        if not self.enabled:
+            return True
+        if self.generation_count == self.config.max_generations:
+            return True
+        return False

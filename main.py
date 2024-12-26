@@ -11,12 +11,10 @@ import modules.visualization as vis
 from modules.configuration_models import (
     SpaceConfig,
     SimConfig,
-    DynamicTaskGenerationConfig,
     RenderingMode,
     RenderingOptions,
 )
-from modules.factories import generate_tasks, generate_agents
-from modules.task import Task
+from modules.factories import generate_tasks, generate_agents, DynamicTaskGenerator
 
 
 parser = argparse.ArgumentParser(
@@ -59,29 +57,19 @@ def handle_pygame_events(status: LoopStatus) -> LoopStatus:
     return status
 
 
-def add_new_tasks(num_tasks: int, tasks: list[Task]):
-    new_task_id_start = len(tasks)
-    new_tasks = generate_tasks(config, num_tasks, new_task_id_start)
-    tasks.extend(new_tasks)
-
-
-# Main game loop
 async def game_loop(config: SpaceConfig, strategy: str):
 
     sim_config: SimConfig = config.simulation
-    task_gen: DynamicTaskGenerationConfig = config.tasks.dynamic_task_generation
     rend_opts: RenderingOptions = config.simulation.rendering_options
 
     vis.set_task_colors(config.tasks)
 
-    # Simulation timestep in seconds
-    sampling_time = 1.0 / sim_config.sampling_freq
+    timestep = 1.0 / sim_config.sampling_freq  # seconds
 
-    # Initialize agents with behavior trees, giving them the information of current tasks
     tasks = generate_tasks(config, config.tasks.quantity, 0)
     agents = generate_agents(tasks, config, strategy)
+    task_generator = DynamicTaskGenerator(config.tasks.dynamic_task_generation)
 
-    # Initialize pygame
     pygame.init()
     if sim_config.rendering_mode == RenderingMode.Screen:
         screen = pygame.display.set_mode(
@@ -90,24 +78,17 @@ async def game_loop(config: SpaceConfig, strategy: str):
     else:
         screen = None  # No screen initialization if rendering is disabled
 
-    # Set logo and title
-    logo_image_path = "assets/logo.jpg"  # Change to the path of your logo image
-    logo = pygame.image.load(logo_image_path)
-    pygame.display.set_icon(logo)
-    pygame.display.set_caption("SPACE(Swarm Planning And Control Evaluation) Simulator")
+    pygame.display.set_caption(
+        "SPACE (Swarm Planning And Control Evaluation) Simulator"
+    )
     font = pygame.font.Font(None, 15)
-
     clock = pygame.time.Clock()
     status = LoopStatus.Running
-    mission_completed = False
+    mission_completed: bool = False
 
     # Initialize simulation time
     simulation_time = 0.0
     last_print_time = 0.0  # Variable to track the last time tasks_left was printed
-
-    # Initialize dynamic task generation time
-    generation_count = 0
-    last_generation_time = 0.0
 
     background_color = (224, 224, 224)
 
@@ -124,27 +105,14 @@ async def game_loop(config: SpaceConfig, strategy: str):
 
         for agent in agents:
             await agent.run_tree()
-            agent.update(sampling_time)
+            agent.update(timestep)
 
-        # Status retrieval
-        simulation_time += sampling_time
+        simulation_time += timestep
         tasks_left = sum(1 for task in tasks if not task.completed)
-        if tasks_left == 0:
-            mission_completed = (
-                not task_gen.enabled or generation_count == task_gen.max_generations
-            )
+        if tasks_left == 0 and task_generator.done():
+            mission_completed = True
 
-        # Dynamic task generation
-        if task_gen.enabled and generation_count < task_gen.max_generations:
-            if simulation_time - last_generation_time >= task_gen.interval_seconds:
-                add_new_tasks(task_gen.tasks_per_generation, tasks)
-                last_generation_time = simulation_time
-                generation_count += 1
-                if sim_config.rendering_mode != RenderingMode.Headless:
-                    print(
-                        f"[{simulation_time:.2f}] Added {task_gen.tasks_per_generation} new tasks: "
-                        f"Generation {generation_count}."
-                    )
+        task_generator.update(simulation_time, tasks)
 
         # Rendering
         if sim_config.rendering_mode == RenderingMode.Screen:
@@ -154,10 +122,6 @@ async def game_loop(config: SpaceConfig, strategy: str):
                 tasks, screen, rend_opts, sim_config.task_visualisation_factor
             )
             vis.draw_task_status(tasks_left, simulation_time, screen)
-
-            # Call draw_decision_making_status from the imported module if it exists
-            # if hasattr(decision_making_module, "draw_decision_making_status"):
-            #     decision_making_module.draw_decision_making_status(screen, agent)
 
             if mission_completed:
                 vis.draw_mission_completed(screen)
