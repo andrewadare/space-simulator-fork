@@ -25,7 +25,6 @@ class GRAPEConfig(BaseModel):
 class GRAPE:
     def __init__(self, agent, config: GRAPEConfig, agent_config: AgentConfig):
         self.agent_id = agent.agent_id
-        self.agent = agent
         self.satisfied = False
         self.evolution_number = 0
         self.time_stamp = 0
@@ -42,6 +41,10 @@ class GRAPE:
             "evolution_number": self.evolution_number,
             "time_stamp": self.time_stamp,
         }
+
+        # Since assigned task is queried several times,
+        # use task_id => Task map for fast lookup.
+        self.task_map: dict[int, Task] = dict()
 
     def initialize_partition(self, agents: list[Agent], tasks: list[Task]):
         self.partition = {task.task_id: set() for task in tasks}
@@ -86,7 +89,13 @@ class GRAPE:
         return _neighbor_agents_info
 
     def decide(self, blackboard: dict, agent_position: np.ndarray):
-        """
+        """NOTE/TODO:
+        Original implementation used Agent.tasks_info, the agent's full task list.
+        Refactored version does not depend on Agent directly and relies only on blackboard info.
+        `get_assigned_task_from_partition` now uses local tasks from the agent's blackboard.
+        The algorithm fails when dynamically generated tasks are introduced.
+        Can this be made to work properly with local tasks only?
+
         Output:
             - `task_id`, if task allocation works well
             - `None`, otherwise
@@ -94,6 +103,9 @@ class GRAPE:
 
         _local_tasks_info = blackboard["local_tasks_info"]
         _local_agents_info = blackboard["local_agents_info"]
+        self.task_map = dict()
+        for task in blackboard["local_tasks_info"]:
+            self.task_map[task.task_id] = task
 
         if not self.partition_initialized:
             self.initialize_partition(_local_agents_info, _local_tasks_info)
@@ -231,22 +243,15 @@ class GRAPE:
         _final_partition = {k: v.copy() for k, v in _partition.items()}
         return _evolution_number, _time_stamp, _final_partition, _satisfied
 
-    def get_assigned_task_from_partition(self, partition):
+    def get_assigned_task_id(self, partition: dict) -> int:
+        for task_id, coalition_members_id in partition.items():
+            if self.agent_id in coalition_members_id:
+                return task_id
+        return -1
 
-        _assigned_task_id = next(
-            (
-                task_id
-                for task_id, coalition_members_id in partition.items()
-                if self.agent_id in coalition_members_id
-            ),
-            None,
-        )
-        _assigned_task = (
-            self.agent.tasks_info[_assigned_task_id]
-            if _assigned_task_id is not None
-            else None
-        )
-        return _assigned_task
+    def get_assigned_task_from_partition(self, partition) -> int | None:
+        id = self.get_assigned_task_id(partition)
+        return self.task_map.get(id)
 
 
 def draw_decision_making_status(screen, agent):
