@@ -34,8 +34,8 @@ class Agent:
         self.bounds = bounds
         self.params = agent_config
         self.tail = deque(maxlen=400)
-        self.tasks_info: list[Task] = tasks  # TODO see README
-        self.all_agents: list[Agent] = []  # TODO see README
+        # self.tasks_info: list[Task] = tasks  # TODO see README
+        # self.all_agents: list[Agent] = []  # TODO see README
         self.message_to_share = {}
         self.assigned_task_id = None  # Local decision-making result.
         self.distance_moved = 0.0
@@ -68,10 +68,10 @@ class Agent:
 
     def sense(self) -> Status:
         """Find waypoints and other agents in this agent's vicinity."""
-        self.blackboard["local_agents_info"] = self.get_agents_nearby()
-        self.blackboard["local_tasks_info"] = self.get_tasks_nearby(
-            incomplete_only=True
-        )
+        # self.blackboard["local_agents_info"] = self.get_agents_nearby()
+        # self.blackboard["local_tasks_info"] = self.get_tasks_nearby(
+        #     incomplete_only=True
+        # )
         for other_agent in self.blackboard["local_agents_info"]:
             if other_agent.agent_id != self.agent_id:
                 self.blackboard["messages_received"].append(
@@ -107,7 +107,15 @@ class Agent:
         """Go to assigned task position."""
 
         if self.assigned_task_id is not None:
-            goal: Task = self.tasks_info[self.assigned_task_id]
+            # goal: Task = self.tasks_info[self.assigned_task_id]
+
+            # Find assigned task in local list
+            idx: int = -1
+            for i, task in enumerate(self.blackboard["local_tasks_info"]):
+                if task.task_id == self.assigned_task_id:
+                    idx = i
+                    break
+            goal: Task = self.blackboard["local_tasks_info"][idx]
 
             # Check if agent reached the task position.
             # NOTE: in original implementation, threshold_done_by_arrival
@@ -116,7 +124,8 @@ class Agent:
             if distance < goal.radius + self.params.radius:
                 if goal.completed:
                     return Status.SUCCESS
-                self.tasks_info[self.assigned_task_id].reduce_amount(
+                # self.tasks_info[self.assigned_task_id].reduce_amount(
+                self.blackboard["local_tasks_info"][idx].reduce_amount(
                     self.params.work_rate * self.params.timestep
                 )
                 self.task_amount_done += self.params.work_rate
@@ -182,10 +191,10 @@ class Agent:
     def set_assigned_task_id(self, task_id):
         self.assigned_task_id = task_id
 
-    def get_agents_nearby(self):
+    def get_agents_nearby(self, all_agents: list["Agent"]):
         r2 = self.params.communication_radius**2
         nearby_agents: list[Agent] = []
-        for agent in self.all_agents:
+        for agent in all_agents:
             if agent.agent_id == self.agent_id:
                 continue
             d = agent.position - self.position
@@ -193,15 +202,12 @@ class Agent:
                 nearby_agents.append(agent)
         return nearby_agents
 
-    def get_tasks_nearby(self, incomplete_only=False):
-        if incomplete_only:
-            tasks = [t for t in self.tasks_info if not t.completed]
-        else:
-            tasks = self.tasks_info
+    def get_tasks_nearby(self, all_tasks: list[Task]):
         r2 = self.params.situation_awareness_radius**2
         nearby_tasks: list[Task] = []
-        for task in tasks:
-            d = task.position - self.position
-            if d @ d <= r2:
-                nearby_tasks.append(task)
+        for task in all_tasks:
+            if not task.completed:
+                d = task.position - self.position
+                if d @ d <= r2:
+                    nearby_tasks.append(task)
         return nearby_tasks

@@ -9,10 +9,11 @@ from enum import Enum
 
 import modules.visualization as vis
 from modules.configuration_models import (
-    SpaceConfig,
-    SimConfig,
     RenderingMode,
     RenderingOptions,
+    SimConfig,
+    SpaceConfig,
+    TaskConfig,
 )
 from modules.factories import generate_tasks, generate_agents, DynamicTaskGenerator
 
@@ -60,15 +61,16 @@ def handle_pygame_events(status: LoopStatus) -> LoopStatus:
 async def game_loop(config: SpaceConfig, strategy: str):
 
     sim_config: SimConfig = config.simulation
+    task_config: TaskConfig = config.tasks
     rend_opts: RenderingOptions = config.simulation.rendering_options
 
     vis.set_task_colors(config.tasks)
 
     timestep = 1.0 / sim_config.sampling_freq  # seconds
 
-    tasks = generate_tasks(config, config.tasks.quantity, 0)
+    tasks = generate_tasks(config.tasks.quantity, 0, task_config)
     agents = generate_agents(tasks, config, strategy)
-    task_generator = DynamicTaskGenerator(config.tasks.dynamic_task_generation)
+    task_generator = DynamicTaskGenerator(config)
 
     pygame.init()
     if sim_config.rendering_mode == RenderingMode.Screen:
@@ -104,6 +106,8 @@ async def game_loop(config: SpaceConfig, strategy: str):
             continue
 
         for agent in agents:
+            agent.blackboard["local_agents_info"] = agent.get_agents_nearby(agents)
+            agent.blackboard["local_tasks_info"] = agent.get_tasks_nearby(tasks)
             await agent.run_tree()
             agent.update(timestep)
 

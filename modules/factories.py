@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from modules.configuration_models import (
     SpaceConfig,
     AgentConfig,
+    TaskConfig,
     OperatingArea,
     DynamicTaskGenerationConfig,
 )
@@ -31,22 +32,23 @@ def generate_positions(quantity, x_min, x_max, y_min, y_max, radius=10):
 
 
 def generate_tasks(
-    config: SpaceConfig, num_tasks: int, task_id_start: int
+    num_tasks: int, task_id_start: int, task_config: TaskConfig
 ) -> list[Task]:
 
+    bounds = task_config.locations
     tasks_positions = generate_positions(
         num_tasks,
-        config.tasks.locations.x_min,
-        config.tasks.locations.x_max,
-        config.tasks.locations.y_min,
-        config.tasks.locations.y_max,
-        radius=config.tasks.locations.non_overlap_radius,
+        bounds.x_min,
+        bounds.x_max,
+        bounds.y_min,
+        bounds.y_max,
+        radius=bounds.non_overlap_radius,
     )
 
     tasks = []
     for idx, pos in enumerate(tasks_positions):
-        amount = random.uniform(config.tasks.amounts.min, config.tasks.amounts.max)
-        radius = max(1, amount / config.simulation.task_visualisation_factor)
+        amount = random.uniform(task_config.amounts.min, task_config.amounts.max)
+        radius = max(1, amount / 3.0)  # Original implementation has a vis. factor
         tasks.append(Task(idx + task_id_start, pos, radius, amount))
 
     return tasks
@@ -108,35 +110,38 @@ def load_task_assignment_types(config_dict: dict, strategy: str) -> tuple[type, 
 class DynamicTaskGenerator:
     """Periodically adds new tasks to the simulation."""
 
-    def __init__(self, config: DynamicTaskGenerationConfig):
+    def __init__(self, space_config: SpaceConfig):
         self.generation_count: int = 0
         self.last_generation_time: float = 0
-        self.config = config
-        self.enabled = config.enabled
+        self.task_config: TaskConfig = space_config.tasks
+        self.dyn_config: DynamicTaskGenerationConfig = (
+            space_config.tasks.dynamic_task_generation
+        )
+        self.enabled = self.dyn_config.enabled
 
     def add_new_tasks(self, num_tasks: int, tasks: list[Task]):
         new_task_id_start = len(tasks)
-        new_tasks = generate_tasks(self.config, num_tasks, new_task_id_start)
+        new_tasks = generate_tasks(num_tasks, new_task_id_start, self.task_config)
         tasks.extend(new_tasks)
 
     def update(self, sim_time: float, tasks: list[Task]):
         if self.done():
             return
 
-        if sim_time - self.last_generation_time >= self.config.interval_seconds:
-            self.add_new_tasks(self.config.tasks_per_generation, tasks)
+        if sim_time - self.last_generation_time >= self.dyn_config.interval_seconds:
+            self.add_new_tasks(self.dyn_config.tasks_per_generation, tasks)
             self.last_generation_time = sim_time
             self.generation_count += 1
 
             print(
                 f"[{sim_time:.2f}] "
-                f"Added {self.config.tasks_per_generation} new tasks: "
+                f"Added {self.dyn_config.tasks_per_generation} new tasks: "
                 f"Generation {self.generation_count}."
             )
 
     def done(self) -> bool:
         if not self.enabled:
             return True
-        if self.generation_count == self.config.max_generations:
+        if self.generation_count == self.dyn_config.max_generations:
             return True
         return False
