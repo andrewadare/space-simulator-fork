@@ -103,7 +103,7 @@ class GRAPE:
 
         _local_tasks_info = blackboard["local_tasks_info"]
         _local_agents_info = blackboard["local_agents_info"]
-        self.task_map = dict()
+
         for task in blackboard["local_tasks_info"]:
             self.task_map[task.task_id] = task
 
