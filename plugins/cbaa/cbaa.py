@@ -26,6 +26,11 @@ class CBAA:
         self.x = {}  # task assignment (key: task id; value: 0 or 1)
         self.y = {}  # winning bid list (key: task id; value: bid value)
 
+        self.message_to_share = {
+            "agent_id": self.agent_id,
+            "winning_bids": self.y,
+        }
+
     def decide(self, blackboard: dict, agent_position: np.ndarray):
         """
         Output:
@@ -71,7 +76,6 @@ class CBAA:
 
                 # Broadcasting
                 self.message_to_share = {
-                    # Implement your idea (data to share)
                     "agent_id": self.agent_id,
                     "winning_bids": self.y,
                 }
