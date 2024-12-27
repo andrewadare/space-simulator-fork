@@ -89,13 +89,7 @@ class GRAPE:
         return _neighbor_agents_info
 
     def decide(self, blackboard: dict, agent_position: np.ndarray):
-        """NOTE/TODO:
-        Original implementation used Agent.tasks_info, the agent's full task list.
-        Refactored version does not depend on Agent directly and relies only on blackboard info.
-        `get_assigned_task_from_partition` now uses local tasks from the agent's blackboard.
-        The algorithm fails when dynamically generated tasks are introduced.
-        Can this be made to work properly with local tasks only?
-
+        """
         Output:
             - `task_id`, if task allocation works well
             - `None`, otherwise
