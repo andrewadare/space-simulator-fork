@@ -2,9 +2,8 @@
 
 This repo is fun for learning and tinkering, especially given the nice paper for explanation.
 
-I appreciate the simplicity and clarity of the core logic, which makes it easy to see the relationship between Agents, Tasks, the BT, and the algorithms:
+I appreciate the simplicity and clarity of the core logic, which makes it easy to see the relationship between Agents, Tasks, the BT, and the algorithms.
  - The core `Node` types in behavior_tree.py are beautifully simple.
- - Passing an agent and the blackboard to each `Node.run` is a nice clear pattern.
  - Providing `action` callbacks via SyncNode.run also seems nice.
  - Remarkably, a rich variety of collective phenomena can be achieved without even changing the tree. Simply changing the agents' `decide` method and other configurable parameters seems to go a long way.
 
@@ -12,32 +11,34 @@ It is also nice that the focus is on multi-agent tasking and execution without b
 
 ## Ideas for improving this repo
 
-### Code quality
-
- - [ ] Config handling
-    * [ ] Develop schemas from existing config for auto-validation and stronger typing. Pydantic? CUE?? _Pydantic_.
-    * [ ] Do away with globals and pass config objects in where needed.
- - [ ] Create cleaner model-view separation in Agent and Task classes 
-    * [ ] Move pygame dependencies out to a vis module.
+ - [x] Each agent holds a list of every other agent in the sim, when all it should know about is its neighbor set. See `Agent.all_agents`, renamed from `agents_info`. Can this be modeled more efficiently and realistically?
+ - [x] Similarly, each agent knows about all available tasks. How would an agent come to know this in the real world?
+ - [x] Decrease coupling by removing Agent dependency from plugin classes (big job)
+ - [x] Develop schemas from existing config for auto-validation and stronger typing. Pydantic? CUE?? _Pydantic_.
+ - [x] Do away with globals and pass config objects in where needed.
+ - [x] Create cleaner model-view separation in Agent and Task classes
+    * [x] Move pygame dependencies out to a vis module.
     * [ ] Vis abstraction to support other alternatives
     * [ ] Abstract kinematics/dynamics so fancier motion models could optionally be substituted in later
- - [ ] Dynamic plugin loading via config and importlib is a cool idea, but the implementation needs work
- - [ ] Rework (really remove) the SyncAction type hierarchy. Less inheritance = more better. Details below.
- - [ ] Behavior tree creation from XML
-    * [ ] Should agent class really be responsible for this? Move to behavior_tree.py?? 
-    * [ ] Refactor node instantiation to avoid `globals()` dict lookups that rely on `from behavior_tree import *`.
+ - [x] Dynamic plugin loading via config and importlib is a cool idea, but the implementation needs work
+ - [x] Remove the SyncAction type hierarchy and use callbacks instead
+ - [x] Simplify behavior tree constructors and call signatures
+ - [x] Behavior tree creation from XML
+    * [x] Should agent class really be responsible for this? Move to behavior_tree.py?? 
+    * [x] Refactor node instantiation to avoid `globals()` dict lookups that rely on `from behavior_tree import *`.
  - [ ] Add init.py to modules/ and consider renaming to src/ or something
  - [ ] Split utils.py into plotting, i/o, and config handling files.
  - [ ] Add type annotations throughout.
- - [ ] Unit tests
+ - [ ] Unit tests?
  - [ ] Make this an installable package:
     * [ ] Add a pyproject.toml and all that
     * [ ] Reorg the source tree to be more idomatic.
     * [ ] Add an examples/ dir and put main.py there?
- - [ ] main.py needs heavy refactoring and cleanup.
- - [ ] Apply consistent source formatting everywhere (black formatter)
- - [ ] Make `timestep` an agent parameter.
- - [ ] Replace `threshold_done_by_arrival` with an Agent.radius parameter (simplifies config; conceptually clearer)
+ - [x] main.py needs heavy refactoring and cleanup.
+ - [x] Apply consistent source formatting everywhere (black formatter)
+ - [x] Make `timestep` an agent parameter.
+ - [x] Replace `threshold_done_by_arrival` with an Agent.radius parameter (simplifies config; conceptually clearer)
+ - [x] I may rename `SyncAction` to `SyncActionNode` because it isn't an action. It is a `Node` that *has* an action.
 
 ### New capabilities and features
 
@@ -45,31 +46,7 @@ It is also nice that the focus is on multi-agent tasking and execution without b
     * See [SwarmLab](https://github.com/lis-epfl/swarmlab.git), which is a major inspiration for SPACE. [SwarmRobotics](https://github.com/xzlxiao/SwarmRobotics) appears to be a python port of SwarmLab. 
  - The sim models point particles in 2D, but could be generalized to model extended bodies in 3D using a library of platform models (warning: feature creep).
 
-### Other thoughts
-
-A `Task` is really a just a waypoint. The only difference is the `amount` field.
-
-Consider using [`typing.Protocol`](https://peps.python.org/pep-0544/) to help constrain and solidify the decision-making plugin pattern, e.g. `DecisionLogic`.
-
-Each agent holds a list of every other agent in the sim, when all it should know about is its neighbor set. See `Agent.all_agents`, renamed from `agents_info`. Can this be modeled more efficiently and realistically?
-
-Similarly, each agent knows about all available tasks. How would an agent come to know this in the real world?
-
-It seems strange that each agent owns a blackboard. Wouldn't it be simpler for `Node` to own it?
-Also, the blackboard is just a dict. Pro: flexibility; Con: flexibility. What would it take to make this threadsafe?
-
-I may rename `SyncAction` to `SyncActionNode` because it isn't an action. It is a `Node` that *has* an action.
-
-The `SyncAction` node is nice and simple: aside from the inherited `name`, it has an `action` object whose only job is to be callable with signature `result: Status = action(agent: Agent, blackboard: dict)`. ~~This is great and there should be no need to change it.~~ Actually, why does the action need an `agent`, especially when each agent already has a tree as a member? `action` seems to be analogous to `tick` in BTCPP. `tick` takes no args. In BTCPP, access to the blackboard is provided through `NodeConfig`.
- 
-But then `LocalSensingNode`, `TaskExecutingNode`, `ExplorationNode`, and `DecisionMakingNode` subclass it, even though they are really just callback wrappers. To me, this doesn't seem to provide significant code reuse or interface standardization benefits. Actually, it's the opposite: the constructors are currently kind of messed up, with some taking an unused `agent` parameter; Agent dependency is needlessly coupled in; and most of these types don't even maintain state that persists outside their callback. So this introduces all the drawbacks of inheritance with none of the advantages.
-
-Instead, for this minimal BT implementation, it seems super clean to build trees from only three concrete `Node` types: `Sequence`, `Fallback`, and `SyncActionNode`. Then `Leaf.action` is the canonical point of extensibility via dependency injection. A user can build an `action` object however they like, whether that's a plain function, a class method, a functor object, or even a lambda. Actions encapsulate whatever state they need, and the Nodes that run them don't need to care. Also, actions, being modular and standardized, can be easily reused across nodes. 
-
-For some reason, the creator of BT.CPP recommends inheritance over this pattern, but I'd like to try it anyway. If I come to realize it is a bad turn, I will have learned something new.
-
-Given this to-do list, starting with Pydantic config models and removing globals would probably provide the best bang for the buck.
-
+Original README below
 ---
 
 
