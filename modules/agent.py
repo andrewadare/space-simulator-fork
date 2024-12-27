@@ -61,7 +61,7 @@ class Agent:
 
         # For self.explore callback
         self.exploration_time = 0.0
-        self.random_waypoint = (0, 0)
+        self.random_waypoint = create_random_point(self.bounds)
 
     def sense(self) -> Status:
         """Find waypoints and other agents in this agent's vicinity."""
